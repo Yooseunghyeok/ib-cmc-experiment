@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# 실험 참가자 데이터 (개인정보/연구 데이터 - 저장소에 커밋하지 않음)
+data/*
+!data/.gitkeep
+
+*.log
+.DS_Store

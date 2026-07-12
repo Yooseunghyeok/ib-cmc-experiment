@@ -1,0 +1,54 @@
+# IB-CMC 실험 설정 파일
+# 이 파일 값만 바꾸면 창 크기, 폰트, UI 위치/크기/색상을 조정할 수 있습니다.
+
+window:
+  size: [1280, 800]
+  fullscreen: false
+  background_color: "white"
+
+font:
+  name: "Malgun Gothic"
+  size_situation: 22
+  size_chat: 20
+  size_interpretation: 24
+  size_likert_label: 16
+  size_likert_number: 18
+  size_instruction: 24
+  color: "black"
+
+# 채팅 프레임(휴대폰 화면) 위치/크기 - 화면 중앙 기준 좌표(px), y는 위가 양수
+chat_frame:
+  x: 0
+  y: 60
+  width: 460
+  height: 380
+
+# UI 버전별 말풍선/프레임 스타일 (실기기 느낌 색상)
+ui_style:
+  iphone:
+    frame_bg: [0.94, 0.94, 0.94]
+    header_name: "친구"
+    friend_bubble_color: [0.90, 0.90, 0.92]
+    friend_text_color: "black"
+    my_bubble_color: [0.05, 0.48, 1.0]
+    my_text_color: "white"
+    bubble_corner: 18
+    bubble_padding: 14
+  galaxy:
+    frame_bg: [1.0, 1.0, 1.0]
+    header_name: "친구"
+    friend_bubble_color: [0.88, 0.88, 0.88]
+    friend_text_color: "black"
+    my_bubble_color: [0.10, 0.42, 0.93]
+    my_text_color: "white"
+    bubble_corner: 8
+    bubble_padding: 12
+
+# 1~5점 척도 위치/간격
+likert:
+  y: -220
+  spacing: 130
+  box_size: 34
+
+paths:
+  data_dir: "data"

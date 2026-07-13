@@ -10,39 +10,43 @@ from .common import confirm_exit
 
 def run_participant_screen(win, config: AppConfig) -> tuple[str, UiVersion]:
     font = config.font
+    s = config.scale
 
     title = visual.TextStim(
-        win, text="참가자 정보를 입력해주세요", pos=(0, 260),
+        win, text="참가자 정보를 입력해주세요", pos=(0, 260 * s),
         color=font.color, font=font.name, height=font.size_instruction, bold=True,
+        wrapWidth=1000 * s,
     )
     id_label = visual.TextStim(
-        win, text="참가자 ID", pos=(-320, 140),
-        color=font.color, font=font.name, height=font.size_chat,
+        win, text="참가자 ID", pos=(-320 * s, 140 * s),
+        color=font.color, font=font.name, height=font.size_chat, wrapWidth=400 * s,
     )
     id_box = visual.TextBox2(
         win, text="", font=font.name, letterHeight=font.size_chat,
-        pos=(60, 140), size=(320, 50), borderColor="black", borderWidth=1,
+        pos=(60 * s, 140 * s), size=(320 * s, 50 * s), borderColor="black", borderWidth=1,
         fillColor="white", color="black", editable=True, alignment="left",
     )
 
     ui_label = visual.TextStim(
-        win, text="UI 버전 선택", pos=(-320, 40),
-        color=font.color, font=font.name, height=font.size_chat,
+        win, text="UI 버전 선택", pos=(-320 * s, 40 * s),
+        color=font.color, font=font.name, height=font.size_chat, wrapWidth=400 * s,
     )
-    iphone_btn = visual.Rect(win, width=180, height=60, pos=(-90, -30), lineColor="black", fillColor="white")
-    iphone_text = visual.TextStim(win, text="iPhone", pos=(-90, -30), color="black", font=font.name, height=font.size_chat)
-    galaxy_btn = visual.Rect(win, width=180, height=60, pos=(120, -30), lineColor="black", fillColor="white")
-    galaxy_text = visual.TextStim(win, text="Galaxy", pos=(120, -30), color="black", font=font.name, height=font.size_chat)
+    iphone_btn = visual.Rect(win, width=180 * s, height=60 * s, pos=(-90 * s, -30 * s), lineColor="black", fillColor="white")
+    iphone_text = visual.TextStim(win, text="iPhone", pos=(-90 * s, -30 * s), color="black", font=font.name, height=font.size_chat)
+    galaxy_btn = visual.Rect(win, width=180 * s, height=60 * s, pos=(120 * s, -30 * s), lineColor="black", fillColor="white")
+    galaxy_text = visual.TextStim(win, text="Galaxy", pos=(120 * s, -30 * s), color="black", font=font.name, height=font.size_chat)
 
-    start_btn = visual.Rect(win, width=200, height=60, pos=(0, -300), lineColor="black", fillColor="white")
-    start_text = visual.TextStim(win, text="시작", pos=(0, -300), color="black", font=font.name, height=font.size_chat, bold=True)
+    start_btn = visual.Rect(win, width=200 * s, height=60 * s, pos=(0, -300 * s), lineColor="black", fillColor="white")
+    start_text = visual.TextStim(win, text="시작", pos=(0, -300 * s), color="black", font=font.name, height=font.size_chat, bold=True)
 
     hint = visual.TextStim(
         win, text="ID를 입력하고 UI 버전을 선택한 뒤 [시작] 버튼을 클릭해주세요.",
-        pos=(0, -200), color=font.color, font=font.name, height=font.size_likert_label,
+        pos=(0, -200 * s), color=font.color, font=font.name, height=font.size_likert_label,
+        wrapWidth=1000 * s,
     )
     error_text = visual.TextStim(
-        win, text="", pos=(0, -240), color="red", font=font.name, height=font.size_likert_label,
+        win, text="", pos=(0, -240 * s), color="red", font=font.name, height=font.size_likert_label,
+        wrapWidth=1000 * s,
     )
 
     mouse = event.Mouse(win=win)

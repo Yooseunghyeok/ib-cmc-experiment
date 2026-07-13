@@ -13,7 +13,8 @@ class ExperimentAborted(Exception):
 def confirm_exit(win, config: AppConfig) -> None:
     """ESC가 눌렸을 때 종료 여부를 물어본다. Y면 ExperimentAborted를 던진다."""
     font = config.font
-    overlay_bg = visual.Rect(win, width=760, height=280, fillColor="white", lineColor="black", lineWidth=2)
+    s = config.scale
+    overlay_bg = visual.Rect(win, width=760 * s, height=280 * s, fillColor="white", lineColor="black", lineWidth=2)
     message = visual.TextStim(
         win,
         text="정말 종료하시겠습니까?\n\nY : 예 (종료하고 저장)      N : 아니오 (계속 진행)",
@@ -21,7 +22,7 @@ def confirm_exit(win, config: AppConfig) -> None:
         color="black",
         font=font.name,
         height=font.size_instruction,
-        wrapWidth=700,
+        wrapWidth=700 * s,
         alignText="center",
     )
     event.clearEvents()

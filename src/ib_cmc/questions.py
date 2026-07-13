@@ -1,8 +1,10 @@
 """실험 문항 데이터.
 
-지금은 제작요청서의 문항 1, 2, 14 세 개만 사용한다.
-나머지 19개 문항을 추가할 때는 이 리스트에 Question을 더 넣기만 하면 되고,
-sequence.py의 홀짝 규칙은 item_id 기준이라 그대로 작동한다.
+`IB-CMC 제작요청서(260711 수정).pdf`의 22개 문항 전체.
+item_id의 홀짝만으로 순서 규칙이 자동 적용되므로(sequence.py) 문항을 추가/수정할 때
+순서 로직은 건드릴 필요 없다. 문항 텍스트를 바꿨다면
+`PYTHONPATH=src python -m ib_cmc.chat_templates.render`를 다시 돌려서
+assets/chat/ 이미지도 갱신해야 한다.
 """
 from __future__ import annotations
 
@@ -26,6 +28,94 @@ QUESTIONS: list[Question] = [
         negative_interpretation="나에게 말해줄 안 좋은 일이 있는 것이다.",
     ),
     Question(
+        item_id=3,
+        situation="친구에게 문자가 왔다.",
+        friend_message="방금 대박인 네 사진 봤어.",
+        my_message=None,
+        benign_interpretation="친구는 내 사진이 잘 나와서 마음에 들어 하는 것이다.",
+        negative_interpretation="친구가 내 이상한 사진을 보고 놀리려고 하는 것이다.",
+    ),
+    Question(
+        item_id=4,
+        situation="나는 친구에게 금요일 밤에 같이 놀 수 있는지 물어보려고 문자를 보냈다. 친구에게 답장이 왔다.",
+        friend_message="나 수민이의 파티에 가.",
+        my_message=None,
+        benign_interpretation="친구도 내가 수민이의 파티에 함께 가기를 원하는 것이다.",
+        negative_interpretation="친구가 금요일에 나랑 놀고 싶어 하지 않는 것이다.",
+    ),
+    Question(
+        item_id=5,
+        situation="친구가 고민이 있어서 나에게 조언을 구하는 문자를 보냈다. 내 생각을 말해주자 친구에게 답장이 왔다.",
+        friend_message="그래, 그렇겠지.",
+        my_message=None,
+        benign_interpretation="친구는 나의 조언이 좋다고 생각하는 것이다.",
+        negative_interpretation="친구는 나의 조언을 마음에 들어 하지 않는 것이다.",
+    ),
+    Question(
+        item_id=6,
+        situation="방금 친구에게 내가 요즘 새로 시작한 취미가 있다고 카톡을 보냈더니 친구에게 답장이 왔다.",
+        friend_message="오 멋지네.",
+        my_message=None,
+        benign_interpretation="친구가 내 새로운 취미에 대해 진짜 관심이 있고 좋게 생각하는 것이다.",
+        negative_interpretation="친구는 아무 생각 없이 영혼 없는 빈말을 한 것이다.",
+    ),
+    Question(
+        item_id=7,
+        situation="아침 수업 시간, 긴장을 많이 했던 발표를 본 친구에게 발표가 어땠냐고 문자를 보냈더니 친구에게 답장이 왔다.",
+        friend_message="괜찮았어.",
+        my_message=None,
+        benign_interpretation="친구가 내 발표를 좋게 봐준 것이다.",
+        negative_interpretation="친구가 내 발표를 별로 마음에 들어 하지 않은 것이다.",
+    ),
+    Question(
+        item_id=8,
+        situation="파티에 참석한 다음 날, 친구에게서 문자가 왔다.",
+        friend_message="어제 얘기를 들었어.",
+        my_message=None,
+        benign_interpretation="친구가 파티에서 일어난 어떤 흥미로운 일에 대해 들은 것이다.",
+        negative_interpretation="친구가 내가 파티에서 한 당황스럽거나 창피한 행동/말에 대해 들은 것이다.",
+    ),
+    Question(
+        item_id=9,
+        situation="어제 친구에게 장문의 문자를 보냈는데 답장이 없었다. 그래서 다시 문자를 보냈더니 친구에게 답장이 왔다.",
+        friend_message="나 어제 문자 못 받았는데.",
+        my_message=None,
+        benign_interpretation="친구가 정말로 문자를 받지 못한 것이다.",
+        negative_interpretation="친구가 그냥 나에게 답장하고 싶지 않았던 것이다.",
+    ),
+    Question(
+        item_id=10,
+        situation="나는 친구에게 오늘 밤에 뭐 하는지 물어보기 위해 문자를 보냈다. 친구에게 답장이 왔다.",
+        friend_message="우리 그냥 여기서 놀려고.",
+        my_message=None,
+        benign_interpretation="내가 친구 집으로 가서 함께 합류해도 괜찮다는 뜻이다.",
+        negative_interpretation="오늘 밤 나랑 놀고 싶지 않다는 뜻이다.",
+    ),
+    Question(
+        item_id=11,
+        situation="나에게 일어난 웃긴 일에 대해 친구에게 문자를 보냈다. 친구에게 답장이 왔다.",
+        friend_message="ㅋㅋㅋ",
+        my_message=None,
+        benign_interpretation="친구는 내가 보낸 문자 내용이 정말 웃기다고 생각한 것이다.",
+        negative_interpretation="친구는 내 이야기가 별로 안 웃긴데 대충 받아넘기며 무시한 것이다.",
+    ),
+    Question(
+        item_id=12,
+        situation="나는 친구와 함께 조별 과제를 해왔다. 어느 날 아침, 친구에게 문자가 왔다.",
+        friend_message="나 어제 과제 끝내느라 밤샜어.",
+        my_message=None,
+        benign_interpretation="친구가 조별 과제를 다 끝내서 신이 난 상태이다.",
+        negative_interpretation="내가 일을 제대로 하지 않아서 나에게 화가 난 상태이다.",
+    ),
+    Question(
+        item_id=13,
+        situation="친구가 파티를 여는데, 나는 친구에게 파티에 다른 누군가를 데려가도 괜찮은지 문자로 물어보았다. 친구에게 답장이 왔다.",
+        friend_message="아 그래.",
+        my_message=None,
+        benign_interpretation="내가 누군가를 데려와도 괜찮다는 뜻이다.",
+        negative_interpretation="내가 누군가를 데려오는 것을 원치 않는다는 뜻이다.",
+    ),
+    Question(
         item_id=14,
         situation="나는 오늘 친구와 만나서 놀기로 계획되어 있어 친구에게 문자를 했다.",
         friend_message="네가 원하는 거 아무거나.",
@@ -33,5 +123,72 @@ QUESTIONS: list[Question] = [
         benign_interpretation="친구는 우리가 무엇을 하든 상관없이 다 좋다는 뜻이다.",
         negative_interpretation="친구는 별로 놀고 싶어 하지 않는다는 뜻이다.",
         my_message_position="before",
+    ),
+    Question(
+        item_id=15,
+        situation="나는 어제 친구의 생일 파티에 참석하지 못했다. 다음 날 아침, 친구에게 문자를 보냈다.",
+        friend_message="신경 쓰지 마.",
+        my_message="어제 못 가서 미안해.",
+        benign_interpretation="친구가 내가 파티에 갈 수 없었던 상황을 이해해 주는 것이다.",
+        negative_interpretation="친구가 파티에 오지 않은 나에게 화가 난 것이다.",
+        my_message_position="before",
+    ),
+    Question(
+        item_id=16,
+        situation="나는 친구에게 우리가 같은 수업을 듣는다고 문자를 보냈다. 친구에게 답장이 왔다.",
+        friend_message="그 수업에서 보겠네.",
+        my_message=None,
+        benign_interpretation="친구는 나를 보면 반가워할 것이다.",
+        negative_interpretation="친구는 나를 만나는 것을 그다지 원하지 않는다.",
+    ),
+    Question(
+        item_id=17,
+        situation="나는 친구와 함께 콘서트에 가기로 하여 친구에게 문자를 보냈다.",
+        friend_message="그래도 되고.",
+        my_message="가기 전에 저녁 먼저 먹을래?",
+        benign_interpretation="친구는 나와 함께 저녁을 먹고 싶어 하는 것이다.",
+        negative_interpretation="친구는 나와 저녁을 먹는 것을 별로 원치 않는 것이다.",
+        my_message_position="before",
+    ),
+    Question(
+        item_id=18,
+        situation="나는 친구에게 지금 전화 통화가 가능한지 문자를 보냈다. 친구에게 답장이 왔다.",
+        friend_message="나중에 할게.",
+        my_message=None,
+        benign_interpretation="친구는 지금은 바빠서 나중에 나랑 이야기하고자 하는 것이다.",
+        negative_interpretation="친구는 나랑 이야기하고 싶지 않은 것이다.",
+    ),
+    Question(
+        item_id=19,
+        situation="나는 친구에게 좋은 직장에 합격했다는 문자를 보냈다. 친구에게 답장이 왔다.",
+        friend_message="잘됐네.",
+        my_message=None,
+        benign_interpretation="친구는 진심으로 나를 축하해 주고 기뻐하는 것이다.",
+        negative_interpretation="친구는 별로 신경 쓰지 않거나 관심이 없는 것이다.",
+    ),
+    Question(
+        item_id=20,
+        situation="나는 친구에게 문자를 했다.",
+        friend_message="나중에 알려줄게.",
+        my_message="목요일에 같이 놀래?",
+        benign_interpretation="친구는 자기 일정을 확인해 봐야 하는 상황인 것이다.",
+        negative_interpretation="친구는 나와 별로 놀고 싶어 하지 않는 것이다.",
+        my_message_position="before",
+    ),
+    Question(
+        item_id=21,
+        situation="내가 친구에게 전화를 걸었으나 받지 않았다. 몇 초 후 친구에게서 문자가 왔다.",
+        friend_message="지금 통화 못 해.",
+        my_message=None,
+        benign_interpretation="친구가 지금 당장 바쁜 상황인 것이다.",
+        negative_interpretation="친구가 나와 이야기하고 싶어 하지 않는 것이다.",
+    ),
+    Question(
+        item_id=22,
+        situation="나는 오늘 밤 친구와 놀기로 되어 있었다. 그러나 너무 피곤하여 약속을 취소하고자 친구에게 문자를 보냈다. 친구에게 답장이 왔다.",
+        friend_message="아 그래.",
+        my_message=None,
+        benign_interpretation="친구는 내가 약속을 취소해야 하는 상황을 이해해 주는 것이다.",
+        negative_interpretation="친구는 약속을 취소한 나에게 화가 난 것이다.",
     ),
 ]

@@ -1,7 +1,8 @@
-"""iPhone/Galaxy 공통 채팅 말풍선 레이아웃 로직.
+"""iPhone/Galaxy 채팅 화면 표시.
 
-상태바, 하단 내비게이션 바는 그리지 않고 헤더(상대 이름)와 말풍선만
-config의 chat_frame 영역 안에 위에서 아래로 쌓아 그린다.
+말풍선/헤더를 PsychoPy 도형으로 직접 그리는 대신, `chat_templates/render.py`가
+HTML/CSS로 미리 구워둔 PNG(assets/chat/q{item_id}_{ui_version}.png)를 그대로
+ImageStim으로 띄운다. 문항이 추가/수정되면 그 스크립트를 다시 돌려야 한다.
 """
 from __future__ import annotations
 
@@ -10,7 +11,9 @@ from typing import Literal
 
 from psychopy import visual
 
-from ..config import AppConfig, ChatFrameConfig, UiStyleConfig
+from ..chat_templates.render import chat_image_path
+from ..config import AppConfig, ChatFrameConfig
+from ..models import Question
 
 Sender = Literal["friend", "me"]
 
@@ -27,92 +30,14 @@ class BaseChatRenderer:
     def __init__(self, win, config: AppConfig):
         self.win = win
         self.config = config
-        self.style: UiStyleConfig = config.ui_style[self.ui_version]
         self.frame: ChatFrameConfig = config.chat_frame
 
-    def build_stims(self, messages: list[ChatMessage]) -> list:
-        stims: list = []
+    def build_stims(self, question: Question) -> list:
         frame = self.frame
-        style = self.style
-
-        stims.append(
-            visual.Rect(
-                self.win,
-                width=frame.width,
-                height=frame.height,
-                pos=(frame.x, frame.y),
-                fillColor=style.frame_bg,
-                lineColor="darkgray",
-                lineWidth=1,
-            )
-        )
-
-        header_y = frame.y + frame.height / 2 - 24
-        stims.append(
-            visual.TextStim(
-                self.win,
-                text=style.header_name,
-                pos=(frame.x, header_y),
-                color="black",
-                font=self.config.font.name,
-                height=self.config.font.size_chat,
-                bold=True,
-            )
-        )
-
-        cur_y = header_y - 34
-        bottom_limit = frame.y - frame.height / 2 + 16
-        for msg in messages:
-            bubble_stims, used_height = self._build_bubble(msg, cur_y)
-            if cur_y - used_height < bottom_limit:
-                break
-            stims.extend(bubble_stims)
-            cur_y -= used_height
-        return stims
-
-    def _build_bubble(self, msg: ChatMessage, top_y: float):
-        style = self.style
-        font = self.config.font
-        frame = self.frame
-        is_me = msg.sender == "me"
-
-        bubble_color = style.my_bubble_color if is_me else style.friend_bubble_color
-        text_color = style.my_text_color if is_me else style.friend_text_color
-        max_text_width = frame.width * 0.62
-        padding = style.bubble_padding
-
-        text_stim = visual.TextStim(
+        image = visual.ImageStim(
             self.win,
-            text=msg.text,
-            font=font.name,
-            height=font.size_chat,
-            color=text_color,
-            wrapWidth=max_text_width,
-            alignText="left",
-            anchorHoriz="center",
-            anchorVert="center",
+            image=chat_image_path(question.item_id, self.ui_version),
+            pos=(frame.x, frame.y),
+            size=(frame.width, frame.height),
         )
-        text_w, text_h = text_stim.boundingBox
-        bubble_w = min(max_text_width, text_w) + padding * 2
-        bubble_h = text_h + padding * 2
-
-        side_margin = 16
-        if is_me:
-            bubble_x = frame.x + frame.width / 2 - bubble_w / 2 - side_margin
-        else:
-            bubble_x = frame.x - frame.width / 2 + bubble_w / 2 + side_margin
-
-        bubble_y = top_y - bubble_h / 2
-
-        rect = visual.Rect(
-            self.win,
-            width=bubble_w,
-            height=bubble_h,
-            pos=(bubble_x, bubble_y),
-            fillColor=bubble_color,
-            lineColor=None,
-        )
-        text_stim.pos = (bubble_x, bubble_y)
-
-        used_height = bubble_h + 14
-        return [rect, text_stim], used_height
+        return [image]

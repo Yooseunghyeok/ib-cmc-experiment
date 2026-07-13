@@ -12,7 +12,7 @@ def run_waiting_screen(win, config: AppConfig) -> None:
     stim = visual.TextStim(
         win, text="모든 문항을 완료하였다면 옆의 종을 쳐주세요.", pos=(0, 0),
         color=font.color, font=font.name, height=font.size_instruction,
-        wrapWidth=1000, alignText="center",
+        wrapWidth=1000 * config.scale, alignText="center",
     )
 
     def draw_frame() -> None:

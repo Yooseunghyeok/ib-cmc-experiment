@@ -1,8 +1,10 @@
-"""결과 저장 인터페이스 + 로컬 파일 구현.
+"""결과 저장 인터페이스 + 로컬 파일 / 구글시트 구현.
 
-지금은 로컬 JSON/CSV로만 저장하지만, 나중에 구글시트 연동이 필요해지면
-ResultStorage를 구현하는 GoogleSheetsStorage를 새로 만들어 app.py에서
-주입하는 구현체만 바꾸면 된다 (인터페이스는 그대로 유지).
+- LocalFileStorage: 세션별 JSON + 통합 CSV (항상 사용, 실험의 기본 저장소)
+- GoogleSheetsStorage: 같은 내용을 구글 스프레드시트에도 기록
+  (설정 방법은 docs/google_sheets_setup.md 참고)
+- CompositeStorage: 위 둘을 묶되, 시트 전송 실패(네트워크 등)가
+  실험 진행을 절대 막지 않도록 로컬 저장만 필수로 취급한다.
 """
 from __future__ import annotations
 
@@ -107,3 +109,172 @@ class LocalFileStorage(ResultStorage):
             writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES)
             writer.writeheader()
             writer.writerows(rows)
+
+
+def summarize_records(records: list[ResponseRecord]) -> dict[str, int | float | str]:
+    """제작요청서 p.2의 연결시트 형식(사전/사후 × 온건/부정)으로 점수를 집계한다.
+
+    각 범주는 문항 22개 × 1~5점이므로 합계 범위는 22~110. 요청서 예시 표에는
+    한 자리 숫자만 있어서 합계/평균 중 무엇을 원하는지 불명확 → 둘 다 기록한다.
+    """
+    summary: dict[str, int | float | str] = {}
+    for phase, phase_ko in (("pre", "사전"), ("post", "사후")):
+        for itype, itype_ko in (("benign", "온건"), ("negative", "부정")):
+            scores = [
+                r.score
+                for r in records
+                if r.phase == phase and r.interpretation_type == itype
+            ]
+            key = f"{phase_ko}({itype_ko})"
+            summary[f"{key} 합계"] = sum(scores)
+            summary[f"{key} 평균"] = round(sum(scores) / len(scores), 2) if scores else ""
+    return summary
+
+
+SUMMARY_FIELDNAMES = [
+    "participant_id",
+    "ui_version",
+    "session_id",
+    "사전(온건) 합계",
+    "사전(부정) 합계",
+    "사후(온건) 합계",
+    "사후(부정) 합계",
+    "사전(온건) 평균",
+    "사전(부정) 평균",
+    "사후(온건) 평균",
+    "사후(부정) 평균",
+    "completion_status",
+    "completed_at",
+]
+
+
+class GoogleSheetsStorage(ResultStorage):
+    """응답을 구글 스프레드시트에 기록한다.
+
+    - `responses` 워크시트: 통합 CSV와 같은 long 포맷, 응답 즉시 한 행 append
+    - `summary` 워크시트: 참가자(세션)별 한 행 — 사전/사후 × 온건/부정 합계·평균
+      (제작요청서 p.2의 연결시트 요구), finalize 시 upsert
+
+    네트워크 오류 등으로 전송이 실패한 행은 내부 큐에 쌓아뒀다가
+    finalize_session에서 재전송을 시도한다. 이 클래스의 메서드는 예외를 밖으로
+    던지지 않는다 — 시트 문제로 실험이 중단되면 안 되기 때문이다. (로컬 저장은
+    CompositeStorage의 primary인 LocalFileStorage가 항상 별도로 수행한다.)
+    """
+
+    RESPONSES_SHEET = "responses"
+    SUMMARY_SHEET = "summary"
+
+    def __init__(self, spreadsheet):
+        """spreadsheet: gspread의 Spreadsheet 객체 (테스트에서는 fake 주입)."""
+        self.spreadsheet = spreadsheet
+        self._records: list[ResponseRecord] = []
+        self._pending_rows: list[list] = []
+        self._responses_ws = None
+        self._summary_ws = None
+
+    @classmethod
+    def from_service_account(cls, spreadsheet_url: str, credentials_path: Path) -> "GoogleSheetsStorage":
+        import gspread  # 실험 실행만 하는 환경에는 없을 수 있어 지연 import
+
+        client = gspread.service_account(filename=str(credentials_path))
+        return cls(client.open_by_url(spreadsheet_url))
+
+    def save_response(self, record: ResponseRecord) -> None:
+        self._records.append(record)
+        row = [record.to_dict().get(f, "") for f in CSV_FIELDNAMES]
+        try:
+            self._flush_pending()
+            self._responses_worksheet().append_row(row, value_input_option="RAW")
+        except Exception as e:
+            self._pending_rows.append(row)
+            print(f"[GoogleSheetsStorage] 응답 전송 실패, 큐에 보관 후 재시도 예정: {e}")
+
+    def finalize_session(self, session: SessionState) -> None:
+        try:
+            self._flush_pending()
+            self._upsert_summary(session)
+        except Exception as e:
+            print(f"[GoogleSheetsStorage] finalize 전송 실패 (로컬 저장은 유지됨): {e}")
+
+    def load_session(self, session_id: str) -> list[ResponseRecord]:
+        raise NotImplementedError("세션 복원은 LocalFileStorage에서 수행한다")
+
+    def _responses_worksheet(self):
+        if self._responses_ws is None:
+            self._responses_ws = self._ensure_worksheet(self.RESPONSES_SHEET, CSV_FIELDNAMES)
+        return self._responses_ws
+
+    def _summary_worksheet(self):
+        if self._summary_ws is None:
+            self._summary_ws = self._ensure_worksheet(self.SUMMARY_SHEET, SUMMARY_FIELDNAMES)
+        return self._summary_ws
+
+    def _ensure_worksheet(self, title: str, header: list[str]):
+        try:
+            ws = self.spreadsheet.worksheet(title)
+        except Exception:
+            ws = self.spreadsheet.add_worksheet(title=title, rows=1000, cols=len(header))
+        if not ws.row_values(1):
+            ws.append_row(header, value_input_option="RAW")
+        return ws
+
+    def _flush_pending(self) -> None:
+        while self._pending_rows:
+            self._responses_worksheet().append_row(self._pending_rows[0], value_input_option="RAW")
+            self._pending_rows.pop(0)
+
+    def _upsert_summary(self, session: SessionState) -> None:
+        summary = summarize_records(self._records)
+        row_dict = {
+            "participant_id": session.participant_id,
+            "ui_version": session.ui_version,
+            "session_id": session.session_id,
+            "completion_status": session.completion_status,
+            "completed_at": session.completed_at or "",
+            **summary,
+        }
+        row = [row_dict.get(f, "") for f in SUMMARY_FIELDNAMES]
+
+        ws = self._summary_worksheet()
+        session_col = ws.col_values(SUMMARY_FIELDNAMES.index("session_id") + 1)
+        try:
+            row_index = session_col.index(session.session_id) + 1
+        except ValueError:
+            ws.append_row(row, value_input_option="RAW")
+        else:
+            ws.update(f"A{row_index}", [row], value_input_option="RAW")
+
+
+class CompositeStorage(ResultStorage):
+    """LocalFileStorage(필수) + 부가 저장소(구글시트 등)를 함께 쓴다.
+
+    primary(로컬) 실패는 그대로 전파하고 — 데이터가 어디에도 안 남으면 안 되므로 —
+    secondary 실패는 삼켜서 실험 진행을 막지 않는다.
+    """
+
+    def __init__(self, primary: LocalFileStorage, secondary: ResultStorage):
+        self.primary = primary
+        self.secondary = secondary
+
+    def save_response(self, record: ResponseRecord) -> None:
+        self.primary.save_response(record)
+        try:
+            self.secondary.save_response(record)
+        except Exception as e:
+            print(f"[CompositeStorage] 부가 저장소 save_response 실패: {e}")
+
+    def finalize_session(self, session: SessionState) -> None:
+        self.primary.finalize_session(session)
+        try:
+            self.secondary.finalize_session(session)
+        except Exception as e:
+            print(f"[CompositeStorage] 부가 저장소 finalize_session 실패: {e}")
+
+    def load_session(self, session_id: str) -> list[ResponseRecord]:
+        return self.primary.load_session(session_id)
+
+    def csv_path(self) -> Path:
+        return self.primary.csv_path()
+
+    def json_file_path(self) -> Path:
+        return self.primary.json_file_path()

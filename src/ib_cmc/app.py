@@ -8,7 +8,7 @@ from datetime import datetime
 
 from psychopy import visual
 
-from .config import AppConfig, apply_scale, load_config
+from .config import PROJECT_ROOT, AppConfig, apply_scale, load_config
 from .models import ResponseRecord, SessionState, UiVersion
 from .questions import QUESTIONS
 from .screens.common import ExperimentAborted
@@ -22,7 +22,7 @@ from .screens.instruction_screen import (
 from .screens.participant_screen import run_participant_screen
 from .screens.waiting_screen import run_waiting_screen
 from .sequence import build_sequence
-from .storage import LocalFileStorage
+from .storage import CompositeStorage, GoogleSheetsStorage, LocalFileStorage, ResultStorage
 from .ui.base_chat import BaseChatRenderer
 from .ui.galaxy_chat import GalaxyChatRenderer
 from .ui.iphone_chat import IPhoneChatRenderer
@@ -37,10 +37,31 @@ def _now_iso() -> str:
     return datetime.now().isoformat()
 
 
+def _build_storage(
+    config: AppConfig, participant_id: str, session_id: str
+) -> LocalFileStorage | CompositeStorage:
+    """로컬 저장은 항상 켜고, settings.yaml의 google_sheets.enabled가 true면
+    구글시트 저장을 얹는다. 시트 연결에 실패해도(키 없음/네트워크 등) 실험은
+    로컬 저장만으로 계속 진행한다."""
+    local = LocalFileStorage(config.data_dir, participant_id, session_id)
+
+    gs = config.google_sheets
+    if not gs.enabled:
+        return local
+
+    credentials_path = PROJECT_ROOT / gs.credentials_path
+    try:
+        sheets = GoogleSheetsStorage.from_service_account(gs.spreadsheet_url, credentials_path)
+    except Exception as e:
+        print(f"[app] 구글시트 연결 실패 — 로컬 저장만 사용합니다: {e}")
+        return local
+    return CompositeStorage(local, sheets)
+
+
 def _run_phase(
     win,
     config: AppConfig,
-    storage: LocalFileStorage,
+    storage: ResultStorage,
     session: SessionState,
     chat_renderer: BaseChatRenderer,
     phase: str,
@@ -101,10 +122,9 @@ def _get_work_area() -> tuple[int, int, int, int]:
     return rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top
 
 
-def run_experiment(config: AppConfig | None = None) -> None:
-    _make_process_dpi_aware()
-    config = config or load_config()
-
+def create_window(config: AppConfig) -> visual.Window:
+    """설정에 맞춰 실험 창을 만들고, 실제 창 높이에 맞는 배율(apply_scale)까지
+    적용해서 반환한다. tools/capture_screens.py도 이 함수를 그대로 쓴다."""
     if config.window.fullscreen:
         # 진짜 전체화면(kiosk 모드). 타이틀바/최소화 버튼이 없어져서 대기화면에서
         # "다른 활동 후 복귀" 흐름과는 안 맞으니 특수한 경우가 아니면 권장하지 않음.
@@ -140,9 +160,16 @@ def run_experiment(config: AppConfig | None = None) -> None:
     # 거의 항상 더 크다) 글씨/프레임/척도가 화면에 비해 작아 보인다. 실제 창 높이에
     # 맞춰 한 번에 키운다.
     apply_scale(config, win.size[1])
+    return win
+
+
+def run_experiment(config: AppConfig | None = None) -> None:
+    _make_process_dpi_aware()
+    config = config or load_config()
+    win = create_window(config)
 
     session: SessionState | None = None
-    storage: LocalFileStorage | None = None
+    storage: LocalFileStorage | CompositeStorage | None = None
 
     try:
         participant_id, ui_version = run_participant_screen(win, config)
@@ -153,7 +180,7 @@ def run_experiment(config: AppConfig | None = None) -> None:
             ui_version=ui_version,
             started_at=_now_iso(),
         )
-        storage = LocalFileStorage(config.data_dir, participant_id, session.session_id)
+        storage = _build_storage(config, participant_id, session.session_id)
         chat_renderer = CHAT_RENDERERS[ui_version](win, config)
 
         run_instruction_screen(win, config, PRE_INSTRUCTION_TEXT)

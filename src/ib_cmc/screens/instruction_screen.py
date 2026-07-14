@@ -29,13 +29,17 @@ POST_INSTRUCTION_TEXT = (
 )
 
 
-def run_instruction_screen(win, config: AppConfig, text: str) -> None:
+def build_instruction_stim(win, config: AppConfig, text: str):
     font = config.font
     s = config.scale
-    stim = visual.TextStim(
+    return visual.TextStim(
         win, text=text, pos=(0, 20 * s), color=font.color, font=font.name,
         height=font.size_instruction, wrapWidth=1000 * s, alignText="left",
     )
+
+
+def run_instruction_screen(win, config: AppConfig, text: str) -> None:
+    stim = build_instruction_stim(win, config, text)
 
     def draw_frame() -> None:
         stim.draw()

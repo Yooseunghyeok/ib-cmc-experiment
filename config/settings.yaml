@@ -16,7 +16,8 @@ font:
   size_situation: 22
   size_chat: 20
   size_interpretation: 24
-  size_likert_label: 16
+  # 척도 라벨은 한 줄로 읽혀야 해서(제작요청서) 크기를 줄이고 간격(likert.spacing)을 넓힘
+  size_likert_label: 13
   size_likert_number: 18
   size_instruction: 24
   color: "black"
@@ -53,10 +54,20 @@ ui_style:
     bubble_padding: 12
 
 # 1~5점 척도 위치/간격
+# spacing은 라벨("상당히 많이 떠오름" 등)이 한 줄로 서로 겹치지 않을 만큼 넓게
 likert:
   y: -300
-  spacing: 130
+  spacing: 160
   box_size: 34
 
 paths:
   data_dir: "data"
+
+# 구글 스프레드시트 연동 (설정 방법: docs/google_sheets_setup.md)
+# enabled: true로 바꾸고 spreadsheet_url을 채우면, 로컬 저장에 더해
+# 시트의 responses(응답 원자료) / summary(참가자별 사전·사후 × 온건·부정 집계)
+# 워크시트에도 기록된다. 시트 전송이 실패해도 실험은 로컬 저장으로 계속 진행됨.
+google_sheets:
+  enabled: false
+  spreadsheet_url: ""
+  credentials_path: "config/google_service_account.json"

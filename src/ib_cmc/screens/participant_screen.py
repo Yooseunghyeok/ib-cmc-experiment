@@ -8,7 +8,7 @@ from ..models import UiVersion
 from .common import confirm_exit
 
 
-def run_participant_screen(win, config: AppConfig) -> tuple[str, UiVersion]:
+def build_participant_stims(win, config: AppConfig) -> dict:
     font = config.font
     s = config.scale
 
@@ -25,6 +25,7 @@ def run_participant_screen(win, config: AppConfig) -> tuple[str, UiVersion]:
         win, text="", font=font.name, letterHeight=font.size_chat,
         pos=(60 * s, 140 * s), size=(320 * s, 50 * s), borderColor="black", borderWidth=1,
         fillColor="white", color="black", editable=True, alignment="left",
+        placeholder="여기를 클릭해 입력",
     )
 
     ui_label = visual.TextStim(
@@ -48,6 +49,37 @@ def run_participant_screen(win, config: AppConfig) -> tuple[str, UiVersion]:
         win, text="", pos=(0, -240 * s), color="red", font=font.name, height=font.size_likert_label,
         wrapWidth=1000 * s,
     )
+
+    return {
+        "title": title,
+        "id_label": id_label,
+        "id_box": id_box,
+        "ui_label": ui_label,
+        "iphone_btn": iphone_btn,
+        "iphone_text": iphone_text,
+        "galaxy_btn": galaxy_btn,
+        "galaxy_text": galaxy_text,
+        "start_btn": start_btn,
+        "start_text": start_text,
+        "hint": hint,
+        "error_text": error_text,
+    }
+
+
+def run_participant_screen(win, config: AppConfig) -> tuple[str, UiVersion]:
+    stims = build_participant_stims(win, config)
+    title = stims["title"]
+    id_label = stims["id_label"]
+    id_box = stims["id_box"]
+    ui_label = stims["ui_label"]
+    iphone_btn = stims["iphone_btn"]
+    iphone_text = stims["iphone_text"]
+    galaxy_btn = stims["galaxy_btn"]
+    galaxy_text = stims["galaxy_text"]
+    start_btn = stims["start_btn"]
+    start_text = stims["start_text"]
+    hint = stims["hint"]
+    error_text = stims["error_text"]
 
     mouse = event.Mouse(win=win)
     selected_ui: UiVersion | None = None

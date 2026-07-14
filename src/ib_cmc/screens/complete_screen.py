@@ -8,7 +8,7 @@ from psychopy import event, visual
 from ..config import AppConfig
 
 
-def run_complete_screen(win, config: AppConfig, json_path: Path, csv_path: Path) -> None:
+def build_complete_stims(win, config: AppConfig, json_path: Path, csv_path: Path) -> list:
     font = config.font
     s = config.scale
     title = visual.TextStim(
@@ -31,12 +31,16 @@ def run_complete_screen(win, config: AppConfig, json_path: Path, csv_path: Path)
         color=font.color, font=font.name, height=font.size_likert_label,
         wrapWidth=1000 * s,
     )
+    return [title, paths_text, hint]
+
+
+def run_complete_screen(win, config: AppConfig, json_path: Path, csv_path: Path) -> None:
+    stims = build_complete_stims(win, config, json_path, csv_path)
 
     event.clearEvents()
     while True:
-        title.draw()
-        paths_text.draw()
-        hint.draw()
+        for stim in stims:
+            stim.draw()
         win.flip()
         if event.getKeys():
             return

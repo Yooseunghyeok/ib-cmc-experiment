@@ -29,37 +29,53 @@
 - Windows DPI 배율(125/150/200%) 대응: `SetProcessDpiAwareness` 호출 + 실제 창 크기에
   맞춰 폰트/프레임/척도를 자동 스케일링(`config.apply_scale`)하도록 변경. 창은 모니터
   작업 영역(작업표시줄 제외)에 맞춰 자동으로 크게 뜨되 타이틀바(최소화/복원)는 유지됨
+- **화면 검증 완료 (2026-07-14)**: `tools/capture_screens.py`(아래 참고)로 실제 PsychoPy
+  창을 띄워 22문항 × iPhone/Galaxy × 온건/부정 = 88화면 + 부속 화면 5장을 전부 캡처해서
+  눈으로 확인함. 해석문·척도 겹침 없음, 채팅 이미지 잘림 없음, 긴 문항(9, 14, 15, 17,
+  20, 22번) 줄바꿈 정상. 참가자 ID 입력창 placeholder를 한국어로 바꿈
+- **척도 라벨 한 줄 표시 (2026-07-14)**: 제작요청서 p.3 코멘트("글자 크기와 간격 수정하여
+  숫자와 한글이 위아래로 간격이 일치하게, 한 줄로 읽히게")대로 1~5점 라벨의 강제 줄바꿈을
+  없애고 글자 크기 축소(16→13)·간격 확대(130→160). 가장 긴 라벨/해석문 조합까지 겹침 없는
+  것을 재캡처로 확인함
+- **구글시트 연동 구현 완료**: `GoogleSheetsStorage`(gspread) + `CompositeStorage`.
+  `config/settings.yaml`의 `google_sheets.enabled: true`로 켜면 로컬 저장에 더해 시트의
+  `responses`(원자료)/`summary`(참가자별 사전·사후 × 온건·부정 합계·평균) 워크시트에도
+  기록됨. 시트 전송 실패는 실험을 막지 않고(로컬은 항상 저장) 종료 시 재전송 시도.
+  **서비스 계정 발급/공유 방법: `docs/google_sheets_setup.md`** — 아직 계정/시트 준비가
+  안 되어 실제 시트로의 end-to-end 확인은 못 함 (mock 테스트는 통과)
 
-### 검증이 더 필요한 부분 (실제 PsychoPy 창을 띄워봐야 확인 가능)
-이 환경에는 화면(디스플레이)이 없어서 PsychoPy GUI를 직접 띄워보지 못했다. 로직 테스트
-(`pytest`)는 통과하지만 아래는 실제 실행하면서 눈으로 확인이 필요함:
-- 22문항 전체를 실제로 한 바퀴 돌면서 이미지/텍스트가 다 잘 나오는지 (지금까지는
-  1, 2, 14번 세 문항 기준으로만 눈으로 확인했었음)
-- `config/settings.yaml`의 위치/간격 값과 스케일링이 실제 모니터 해상도에서 잘 맞는지
+### 검증이 더 필요한 부분 (수동 확인 필요)
+화면 레이아웃은 위 캡처로 확인됐고, 아래는 상호작용이라 직접 `python main.py`로
+한 바퀴 돌면서 확인이 필요함:
 - 참가자 정보 입력 화면의 `TextBox2`(참가자 ID 입력창) 키보드 포커스/타이핑 동작
+- ESC → 종료 확인(Y/N) 동작
 - 대기화면 이후 "다른 활동 후 다시 스페이스바" 흐름이 실제 창 최소화/복귀 시에도 문제없는지
+- 완주 후 `data/<참가자ID>/<세션ID>.json` + `data/all_responses.csv` 내용 확인
 
 ### 다음에 할 일 (제안)
-1. 실제 PsychoPy 창으로 22문항 전체 한 번 완주해보고 레이아웃/이미지 수치 보정
-2. `GoogleSheetsStorage` 구현 (gspread 등) 후 `app.py`에서 `LocalFileStorage` 대신 주입,
-   혹은 둘 다 쓰는 `CompositeStorage`로 확장
+1. 위 수동 확인 항목 한 바퀴 완주로 체크
+2. 구글 서비스 계정 만들기 (`docs/google_sheets_setup.md` 따라하기) → 더미 참가자로
+   시트에 값 들어오는지 end-to-end 확인
+3. summary 시트의 합계/평균 중 연구 분석에 쓸 값 연구자에게 확인
 
 ## 프로젝트 구조
 
 ```
 src/ib_cmc/
-  app.py                 실험 흐름 상태 머신
+  app.py                 실험 흐름 상태 머신 + create_window + 저장소 조립(_build_storage)
   config.py               config/settings.yaml 로더
   models.py                 Question / SessionState / ResponseRecord
   questions.py               문항 데이터 (22개 전체)
   sequence.py                 무작위화 + 온건/부정 제시 순서 규칙
-  storage.py                   ResultStorage 인터페이스 + LocalFileStorage
+  storage.py                   ResultStorage + LocalFileStorage + GoogleSheetsStorage + CompositeStorage
   screens/                      화면별 모듈 (participant/instruction/experiment/waiting/complete/common)
   ui/                             base_chat + iphone_chat + galaxy_chat (assets/chat/ 이미지를 ImageStim으로 표시)
   chat_templates/                  render.py(HTML->PNG 생성 스크립트) + static/(아바타 이미지)
 
 assets/chat/              문항별 채팅 화면 PNG (render.py로 생성됨, 커밋됨)
-config/settings.yaml     창 크기, 폰트, UI별 위치/크기/색상 설정
+config/settings.yaml     창 크기, 폰트, UI별 위치/크기/색상, 구글시트 설정
+tools/capture_screens.py  전체 화면을 클릭 없이 캡처하는 검증 스크립트 (아래 참고)
+docs/google_sheets_setup.md  구글 서비스 계정 발급/공유 가이드
 tests/                    test_sequence.py, test_storage.py
 main.py                   실행 진입점
 ```
@@ -70,12 +86,29 @@ main.py                   실행 진입점
 올려버려서 그 환경에 있던 다른 패키지(예: scipy, gensim 등)가 깨질 수 있음 (실제로 겪음).
 반드시 이 프로젝트 전용 가상환경을 만들어서 쓴다.
 
-```bash
+```powershell
+# PowerShell 기준 (이미 .venv가 있으면 두 번째 줄부터)
 python -m venv .venv
-.venv\Scripts\activate        # Windows
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 pytest              # 단위 테스트 (sequence, storage) — 디스플레이 없어도 실행됨
 python main.py       # 실제 실험 프로그램 실행 (PsychoPy 창)
+```
+
+(cmd에서는 `.\.venv\Scripts\Activate.ps1` 대신 `.venv\Scripts\activate.bat`,
+git bash에서는 `source .venv/Scripts/activate`)
+
+### 화면 검증용 스크린샷 캡처
+
+측정 화면 88장(22문항 × iPhone/Galaxy × 온건/부정)과 부속 화면(참가자 입력/설명/
+대기/종료)을 클릭 없이 자동으로 그려서 `data/preview/`에 PNG로 저장한다.
+실제 실험과 동일한 창/자극 코드를 쓰므로 레이아웃 수치를 바꾼 뒤 확인할 때 유용함:
+
+```powershell
+python tools\capture_screens.py                      # 전체 88장 + 부속 화면
+python tools\capture_screens.py --ui iphone          # iPhone 버전만
+python tools\capture_screens.py --items 1,2,14       # 특정 문항만
+python tools\capture_screens.py --no-aux             # 측정 화면만
 ```
 
 `config/settings.yaml`에서 창 크기, 폰트, UI 위치/크기/색상을 조정할 수 있다.
@@ -145,6 +178,10 @@ PYTHONPATH=src python -m ib_cmc.chat_templates.render
 
 - `data/<참가자ID>/<세션ID>.json` : 세션별 전체 응답 (클릭 즉시 저장, 중간에 꺼져도 보존)
 - `data/all_responses.csv` : 모든 참가자·iPhone/Galaxy 버전 통합 결과 (한 시트)
+- (선택) 구글 스프레드시트 : `config/settings.yaml`의 `google_sheets.enabled: true`면
+  `responses`(원자료) / `summary`(참가자별 사전·사후 × 온건·부정 합계·평균) 워크시트에도
+  자동 기록. 설정 방법은 `docs/google_sheets_setup.md`. 시트 전송 실패는 실험을 막지
+  않으며 로컬 저장은 항상 유지된다.
 
 각 응답 행에는 `session_id, participant_id, ui_version, phase(pre/post), item_id,
 item_presentation_order, interpretation_type(benign/negative), interpretation_order(1/2),

@@ -1,6 +1,8 @@
 psychopy>=2024.1.0
 pyyaml>=6.0
 pytest>=7.4
+gspread>=6.0        # 구글시트 연동 (docs/google_sheets_setup.md)
+google-auth>=2.0
 
 # 아래는 실험 실행에는 필요 없고, 채팅 화면 이미지(assets/chat/)를
 # chat_templates/render.py로 다시 생성할 때만 필요함:

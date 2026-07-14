@@ -58,6 +58,13 @@ class LikertConfig:
 
 
 @dataclass
+class GoogleSheetsConfig:
+    enabled: bool = False
+    spreadsheet_url: str = ""
+    credentials_path: str = "config/google_service_account.json"
+
+
+@dataclass
 class AppConfig:
     window: WindowConfig
     font: FontConfig
@@ -65,6 +72,7 @@ class AppConfig:
     ui_style: dict[str, UiStyleConfig]
     likert: LikertConfig
     data_dir: Path
+    google_sheets: GoogleSheetsConfig = field(default_factory=GoogleSheetsConfig)
     scale: float = 1.0
 
 
@@ -126,6 +134,7 @@ def load_config(path: Path | None = None) -> AppConfig:
     }
     likert = LikertConfig(**raw["likert"])
     data_dir = PROJECT_ROOT / raw["paths"]["data_dir"]
+    google_sheets = GoogleSheetsConfig(**raw.get("google_sheets", {}))
 
     return AppConfig(
         window=window,
@@ -134,4 +143,5 @@ def load_config(path: Path | None = None) -> AppConfig:
         ui_style=ui_style,
         likert=likert,
         data_dir=data_dir,
+        google_sheets=google_sheets,
     )

@@ -173,20 +173,28 @@ class GoogleSheetsStorage(ResultStorage):
     RESPONSES_SHEET = "responses"
     SUMMARY_SHEET = SUMMARY_SHEET
 
-    def __init__(self, spreadsheet):
-        """spreadsheet: gspread의 Spreadsheet 객체 (테스트에서는 fake 주입)."""
+    def __init__(self, spreadsheet, wait_fn=None):
+        """spreadsheet: gspread의 Spreadsheet 객체 (테스트에서는 fake 주입).
+
+        wait_fn(seconds): finalize 재시도 사이의 대기. 기본 time.sleep은 창의
+        이벤트 처리를 막아 '응답 없음'으로 보이므로, UI가 있는 곳에서는 안내
+        문구를 그리며 기다리는 함수를 주입한다(app.py의 _make_saving_wait).
+        """
         self.spreadsheet = spreadsheet
+        self.wait_fn = wait_fn or time.sleep
         self._records: list[ResponseRecord] = []
         self._pending_rows: list[list] = []
         self._responses_ws = None
         self._summary_ws = None
 
     @classmethod
-    def from_service_account(cls, spreadsheet_url: str, credentials_path: Path) -> "GoogleSheetsStorage":
+    def from_service_account(
+        cls, spreadsheet_url: str, credentials_path: Path, wait_fn=None
+    ) -> "GoogleSheetsStorage":
         import gspread  # 실험 실행만 하는 환경에는 없을 수 있어 지연 import
 
         client = gspread.service_account(filename=str(credentials_path))
-        return cls(client.open_by_url(spreadsheet_url))
+        return cls(client.open_by_url(spreadsheet_url), wait_fn=wait_fn)
 
     def save_response(self, record: ResponseRecord) -> None:
         self._records.append(record)
@@ -203,10 +211,11 @@ class GoogleSheetsStorage(ResultStorage):
     # 기다렸다 몇 차례 재시도한다.
     FINALIZE_RETRY_DELAYS = (5, 15, 30, 65)
 
-    def finalize_session(self, session: SessionState, _sleep=time.sleep) -> None:
+    def finalize_session(self, session: SessionState, _sleep=None) -> None:
+        wait = _sleep or self.wait_fn
         for delay in (0, *self.FINALIZE_RETRY_DELAYS):
             if delay:
-                _sleep(delay)
+                wait(delay)
             try:
                 self._flush_pending()
                 self._upsert_summary(session)

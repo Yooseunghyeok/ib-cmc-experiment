@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ctypes
 import random
+import time
 import uuid
 from datetime import datetime
 
@@ -37,8 +38,30 @@ def _now_iso() -> str:
     return datetime.now().isoformat()
 
 
+def _make_saving_wait(win, config: AppConfig):
+    """구글시트 finalize 재시도 사이의 대기 함수를 만든다.
+
+    time.sleep으로 기다리면 창이 이벤트를 처리하지 못해 윈도우가 '응답 없음'
+    으로 표시하므로, 안내 문구를 매 프레임 그리면서 기다린다(win.flip()이
+    이벤트 처리를 겸한다)."""
+    font = config.font
+    msg = visual.TextStim(
+        win, text="결과를 저장하고 있습니다. 잠시만 기다려주세요…", pos=(0, 0),
+        color=font.color, font=font.name, height=font.size_instruction,
+        wrapWidth=win.size[0] * 0.8,
+    )
+
+    def wait(seconds: float) -> None:
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            msg.draw()
+            win.flip()
+
+    return wait
+
+
 def _build_storage(
-    config: AppConfig, participant_id: str, session_id: str
+    config: AppConfig, participant_id: str, session_id: str, wait_fn=None
 ) -> LocalFileStorage | CompositeStorage:
     """로컬 저장은 항상 켜고, settings.yaml의 google_sheets.enabled가 true면
     구글시트 저장을 얹는다. 시트 연결에 실패해도(키 없음/네트워크 등) 실험은
@@ -51,7 +74,9 @@ def _build_storage(
 
     credentials_path = PROJECT_ROOT / gs.credentials_path
     try:
-        sheets = GoogleSheetsStorage.from_service_account(gs.spreadsheet_url, credentials_path)
+        sheets = GoogleSheetsStorage.from_service_account(
+            gs.spreadsheet_url, credentials_path, wait_fn=wait_fn
+        )
     except Exception as e:
         print(f"[app] 구글시트 연결 실패 — 로컬 저장만 사용합니다: {e}")
         return local
@@ -185,7 +210,10 @@ def run_experiment(config: AppConfig | None = None) -> None:
             ui_version=ui_version,
             started_at=_now_iso(),
         )
-        storage = _build_storage(config, participant_id, session.session_id)
+        storage = _build_storage(
+            config, participant_id, session.session_id,
+            wait_fn=_make_saving_wait(win, config),
+        )
         chat_renderer = CHAT_RENDERERS[ui_version](win, config)
 
         run_instruction_screen(win, config, PRE_INSTRUCTION_TEXT)

@@ -34,7 +34,7 @@ def build_instruction_stim(win, config: AppConfig, text: str):
     s = config.scale
     return visual.TextStim(
         win, text=text, pos=(0, 20 * s), color=font.color, font=font.name,
-        height=font.size_instruction, wrapWidth=1000 * s, alignText="left",
+        height=font.size_instruction, wrapWidth=1000 * s, alignText="center",
     )
 
 

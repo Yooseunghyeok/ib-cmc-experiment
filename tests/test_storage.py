@@ -105,23 +105,42 @@ def test_master_csv_combines_multiple_sessions(tmp_path):
     assert participant_ids == {"p1", "p2"}
 
 
-def test_summarize_records_aggregates_by_phase_and_type():
+def test_summarize_records_maps_item_phase_and_type_scores():
     records = [
-        _make_record(phase="pre", interpretation_type="benign", score=2),
-        _make_record(phase="pre", interpretation_type="benign", score=4),
-        _make_record(phase="pre", interpretation_type="negative", score=5),
-        _make_record(phase="post", interpretation_type="benign", score=1),
+        _make_record(phase="pre", item_id=1, interpretation_type="benign", score=2),
+        _make_record(phase="pre", item_id=1, interpretation_type="negative", score=4),
+        _make_record(phase="pre", item_id=2, interpretation_type="negative", score=5),
+        _make_record(phase="post", item_id=1, interpretation_type="benign", score=1),
+        _make_record(phase="post", item_id=2, interpretation_type="negative", score=3),
     ]
 
     summary = summarize_records(records)
 
-    assert summary["사전(온건) 합계"] == 6
-    assert summary["사전(온건) 평균"] == 3.0
-    assert summary["사전(부정) 합계"] == 5
-    assert summary["사후(온건) 합계"] == 1
-    # 응답이 하나도 없는 범주는 빈 문자열 (0으로 오해되지 않도록)
-    assert summary["사후(부정) 합계"] == 0
-    assert summary["사후(부정) 평균"] == ""
+    assert len(SUMMARY_FIELDNAMES) == 89
+    assert SUMMARY_FIELDNAMES[:9] == [
+        "ID",
+        "1 사전(온건)",
+        "1 사전(부정)",
+        "1 사후 (온건)",
+        "1 사후 (부정)",
+        "2 사전(온건)",
+        "2 사전(부정)",
+        "2 사후 (온건)",
+        "2 사후 (부정)",
+    ]
+    assert SUMMARY_FIELDNAMES[-4:] == [
+        "22 사전(온건)",
+        "22 사전(부정)",
+        "22 사후 (온건)",
+        "22 사후 (부정)",
+    ]
+    assert summary["1 사전(온건)"] == 2
+    assert summary["1 사전(부정)"] == 4
+    assert summary["1 사후 (온건)"] == 1
+    assert summary["1 사후 (부정)"] == ""
+    assert summary["2 사전(온건)"] == ""
+    assert summary["2 사전(부정)"] == 5
+    assert summary["2 사후 (부정)"] == 3
 
 
 class FakeWorksheet:
@@ -188,35 +207,39 @@ def test_google_sheets_appends_response_rows_with_header():
     assert ws.rows[1][CSV_FIELDNAMES.index("score")] == 4
 
 
-def test_google_sheets_finalize_writes_summary_row():
+def test_google_sheets_finalize_writes_single_summary_row():
     sheet = FakeSpreadsheet()
     storage = GoogleSheetsStorage(sheet)
-    storage.save_response(_make_record(phase="pre", interpretation_type="negative", score=5))
-    storage.save_response(_make_record(phase="post", interpretation_type="benign", score=2))
+    storage.save_response(_make_record(phase="pre", item_id=1, interpretation_type="negative", score=5))
+    storage.save_response(_make_record(phase="post", item_id=2, interpretation_type="benign", score=2))
 
     storage.finalize_session(_make_session())
 
     ws = sheet.worksheets[GoogleSheetsStorage.SUMMARY_SHEET]
     assert ws.rows[0] == SUMMARY_FIELDNAMES
+
     row = dict(zip(SUMMARY_FIELDNAMES, ws.rows[1]))
-    assert row["participant_id"] == "p1"
-    assert row["사전(부정) 합계"] == 5
-    assert row["사후(온건) 합계"] == 2
-    assert row["completion_status"] == "completed"
+    assert row["ID"] == "p1"
+    assert row["1 사전(부정)"] == 5
+    assert row["1 사전(온건)"] == ""
+    assert row["1 사후 (부정)"] == ""
+    assert row["2 사후 (온건)"] == 2
+    assert row["2 사후 (부정)"] == ""
 
 
 def test_google_sheets_finalize_upserts_existing_summary_row():
     sheet = FakeSpreadsheet()
     storage = GoogleSheetsStorage(sheet)
-    storage.save_response(_make_record(score=3))
+    storage.save_response(_make_record(phase="pre", item_id=1, interpretation_type="negative", score=3))
 
     storage.finalize_session(_make_session(completion_status="aborted", completed_at=None))
     storage.finalize_session(_make_session(completion_status="completed"))
 
     ws = sheet.worksheets[GoogleSheetsStorage.SUMMARY_SHEET]
-    assert len(ws.rows) == 2  # 헤더 + 세션당 한 행 (중복 append 없음)
+    assert len(ws.rows) == 2  # 헤더 + 참가자당 한 행 (중복 append 없음)
     row = dict(zip(SUMMARY_FIELDNAMES, ws.rows[1]))
-    assert row["completion_status"] == "completed"
+    assert row["ID"] == "p1"
+    assert row["1 사전(부정)"] == 3
 
 
 def test_google_sheets_queues_failed_rows_and_retries_on_finalize():

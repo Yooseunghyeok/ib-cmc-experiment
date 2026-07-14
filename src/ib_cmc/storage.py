@@ -111,49 +111,57 @@ class LocalFileStorage(ResultStorage):
             writer.writerows(rows)
 
 
-def summarize_records(records: list[ResponseRecord]) -> dict[str, int | float | str]:
-    """제작요청서 p.2의 연결시트 형식(사전/사후 × 온건/부정)으로 점수를 집계한다.
+ITEM_IDS = range(1, 23)
+SUMMARY_SHEET = "summary"
+SUMMARY_COLUMN_SPECS = (
+    ("pre", "benign", "사전(온건)"),
+    ("pre", "negative", "사전(부정)"),
+    ("post", "benign", "사후 (온건)"),
+    ("post", "negative", "사후 (부정)"),
+)
 
-    각 범주는 문항 22개 × 1~5점이므로 합계 범위는 22~110. 요청서 예시 표에는
-    한 자리 숫자만 있어서 합계/평균 중 무엇을 원하는지 불명확 → 둘 다 기록한다.
+
+def summary_sheet_fieldnames() -> list[str]:
+    """summary 워크시트의 wide-format 헤더를 만든다.
+
+    각 문항마다 사전(온건), 사전(부정), 사후 (온건), 사후 (부정) 순서로
+    4개 점수 열을 배치한다.
     """
-    summary: dict[str, int | float | str] = {}
-    for phase, phase_ko in (("pre", "사전"), ("post", "사후")):
-        for itype, itype_ko in (("benign", "온건"), ("negative", "부정")):
-            scores = [
-                r.score
-                for r in records
-                if r.phase == phase and r.interpretation_type == itype
-            ]
-            key = f"{phase_ko}({itype_ko})"
-            summary[f"{key} 합계"] = sum(scores)
-            summary[f"{key} 평균"] = round(sum(scores) / len(scores), 2) if scores else ""
+    return [
+        "ID",
+        *(
+            f"{item_id} {label}"
+            for item_id in ITEM_IDS
+            for _phase, _itype, label in SUMMARY_COLUMN_SPECS
+        ),
+    ]
+
+
+SUMMARY_FIELDNAMES = summary_sheet_fieldnames()
+
+
+def summarize_records(records: list[ResponseRecord]) -> dict[str, int | str]:
+    """문항별 사전/사후 × 온건/부정 점수를 summary 행으로 정리한다.
+
+    summary 워크시트에는 참가자 ID와 22개 문항 × 4개 조건(사전(온건),
+    사전(부정), 사후 (온건), 사후 (부정)) 점수 열을 저장한다. 아직 응답이
+    없는 문항/조건은 빈 문자열로 남긴다.
+    """
+    summary: dict[str, int | str] = {field: "" for field in SUMMARY_FIELDNAMES}
+    for record in records:
+        for phase, interpretation_type, label in SUMMARY_COLUMN_SPECS:
+            if record.phase == phase and record.interpretation_type == interpretation_type:
+                summary[f"{record.item_id} {label}"] = record.score
+                break
     return summary
-
-
-SUMMARY_FIELDNAMES = [
-    "participant_id",
-    "ui_version",
-    "session_id",
-    "사전(온건) 합계",
-    "사전(부정) 합계",
-    "사후(온건) 합계",
-    "사후(부정) 합계",
-    "사전(온건) 평균",
-    "사전(부정) 평균",
-    "사후(온건) 평균",
-    "사후(부정) 평균",
-    "completion_status",
-    "completed_at",
-]
 
 
 class GoogleSheetsStorage(ResultStorage):
     """응답을 구글 스프레드시트에 기록한다.
 
     - `responses` 워크시트: 통합 CSV와 같은 long 포맷, 응답 즉시 한 행 append
-    - `summary` 워크시트: 참가자(세션)별 한 행 — 사전/사후 × 온건/부정 합계·평균
-      (제작요청서 p.2의 연결시트 요구), finalize 시 upsert
+    - `summary` 워크시트: 참가자별 한 행 — ID와 22개 문항 × 사전/사후 ×
+      온건/부정 88개 점수 열, finalize 시 upsert
 
     네트워크 오류 등으로 전송이 실패한 행은 내부 큐에 쌓아뒀다가
     finalize_session에서 재전송을 시도한다. 이 클래스의 메서드는 예외를 밖으로
@@ -162,7 +170,7 @@ class GoogleSheetsStorage(ResultStorage):
     """
 
     RESPONSES_SHEET = "responses"
-    SUMMARY_SHEET = "summary"
+    SUMMARY_SHEET = SUMMARY_SHEET
 
     def __init__(self, spreadsheet):
         """spreadsheet: gspread의 Spreadsheet 객체 (테스트에서는 fake 주입)."""
@@ -224,21 +232,14 @@ class GoogleSheetsStorage(ResultStorage):
             self._pending_rows.pop(0)
 
     def _upsert_summary(self, session: SessionState) -> None:
-        summary = summarize_records(self._records)
-        row_dict = {
-            "participant_id": session.participant_id,
-            "ui_version": session.ui_version,
-            "session_id": session.session_id,
-            "completion_status": session.completion_status,
-            "completed_at": session.completed_at or "",
-            **summary,
-        }
+        row_dict = summarize_records(self._records)
+        row_dict["ID"] = session.participant_id
         row = [row_dict.get(f, "") for f in SUMMARY_FIELDNAMES]
 
         ws = self._summary_worksheet()
-        session_col = ws.col_values(SUMMARY_FIELDNAMES.index("session_id") + 1)
+        id_col = ws.col_values(SUMMARY_FIELDNAMES.index("ID") + 1)
         try:
-            row_index = session_col.index(session.session_id) + 1
+            row_index = id_col.index(session.participant_id) + 1
         except ValueError:
             ws.append_row(row, value_input_option="RAW")
         else:

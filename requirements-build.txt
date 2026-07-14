@@ -1,0 +1,12 @@
+# Windows packaging pins for PyInstaller builds.
+# Install after requirements.txt inside the project virtual environment.
+numpy==1.26.4
+scipy==1.11.4
+matplotlib==3.8.4
+opencv-python==4.10.0.84
+pywin32>=306
+pypiwin32>=223
+python-bidi>=0.6.0
+pandas>=2.2,<2.3
+pyinstaller>=6.10
+pyinstaller-hooks-contrib>=2024.8

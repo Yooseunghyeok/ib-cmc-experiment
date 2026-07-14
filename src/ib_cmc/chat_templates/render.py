@@ -11,8 +11,6 @@ PsychoPy(pyglet)의 도형 그리기 API로 말풍선 각도/색상/헤더 아�
 """
 from __future__ import annotations
 
-from playwright.sync_api import sync_playwright
-
 from ..config import PROJECT_ROOT, AppConfig, load_config
 from ..models import Question
 from ..questions import QUESTIONS
@@ -237,6 +235,11 @@ def build_html(question: Question, ui_version: str, config: AppConfig) -> str:
 
 
 def render_all() -> None:
+    # playwright는 이미지 굽기 스크립트에서만 필요하다. 모듈 최상단에서 import하면
+    # base_chat.py(chat_image_path) 경유로 실행용 exe에까지 끌려 들어가서
+    # PyInstaller 빌드가 greenlet._greenlet 누락으로 시작 즉시 죽는다.
+    from playwright.sync_api import sync_playwright
+
     config = load_config()
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
     # set_content()으로 넣은 페이지는 about:blank 취급이라 file:// 이미지(아바타)를

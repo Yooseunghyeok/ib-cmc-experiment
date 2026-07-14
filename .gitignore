@@ -12,5 +12,10 @@ data/*
 # 구글 서비스 계정 키 (절대 커밋 금지 - 유출 시 시트 접근 권한이 넘어감)
 config/google_service_account.json
 
+# PyInstaller 빌드 산출물
+build/
+dist/
+build-log.txt
+
 *.log
 .DS_Store

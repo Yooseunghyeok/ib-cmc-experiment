@@ -15,11 +15,7 @@ from .questions import QUESTIONS
 from .screens.common import ExperimentAborted
 from .screens.complete_screen import run_complete_screen
 from .screens.experiment_screen import run_experiment_screen
-from .screens.instruction_screen import (
-    POST_INSTRUCTION_TEXT,
-    PRE_INSTRUCTION_TEXT,
-    run_instruction_screen,
-)
+from .screens.instruction_screen import run_instruction_screen
 from .screens.participant_screen import run_participant_screen
 from .screens.waiting_screen import run_waiting_screen
 from .sequence import build_sequence
@@ -216,12 +212,12 @@ def run_experiment(config: AppConfig | None = None) -> None:
         )
         chat_renderer = CHAT_RENDERERS[ui_version](win, config)
 
-        run_instruction_screen(win, config, PRE_INSTRUCTION_TEXT)
+        run_instruction_screen(win, config, "pre")
         _run_phase(win, config, storage, session, chat_renderer, "pre", random.Random())
 
         run_waiting_screen(win, config)
 
-        run_instruction_screen(win, config, POST_INSTRUCTION_TEXT)
+        run_instruction_screen(win, config, "post")
         _run_phase(win, config, storage, session, chat_renderer, "post", random.Random())
 
         session.completed_at = _now_iso()

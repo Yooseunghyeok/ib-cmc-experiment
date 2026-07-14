@@ -26,11 +26,7 @@ from ib_cmc.config import load_config  # noqa: E402
 from ib_cmc.questions import QUESTIONS  # noqa: E402
 from ib_cmc.screens.complete_screen import build_complete_stims  # noqa: E402
 from ib_cmc.screens.experiment_screen import build_experiment_stims  # noqa: E402
-from ib_cmc.screens.instruction_screen import (  # noqa: E402
-    POST_INSTRUCTION_TEXT,
-    PRE_INSTRUCTION_TEXT,
-    build_instruction_stim,
-)
+from ib_cmc.screens.instruction_screen import build_instruction_stim  # noqa: E402
 from ib_cmc.screens.participant_screen import build_participant_stims  # noqa: E402
 from ib_cmc.screens.waiting_screen import build_waiting_stim  # noqa: E402
 
@@ -83,9 +79,9 @@ def main() -> None:
             print("[aux] 부속 화면 캡처 중...")
             participant = build_participant_stims(win, config)
             snap(win, list(participant.values()), out_dir / "aux_participant.png")
-            snap(win, [build_instruction_stim(win, config, PRE_INSTRUCTION_TEXT)], out_dir / "aux_instruction_pre.png")
+            snap(win, [build_instruction_stim(win, config, "pre")], out_dir / "aux_instruction_pre.png")
             snap(win, [build_waiting_stim(win, config)], out_dir / "aux_waiting.png")
-            snap(win, [build_instruction_stim(win, config, POST_INSTRUCTION_TEXT)], out_dir / "aux_instruction_post.png")
+            snap(win, [build_instruction_stim(win, config, "post")], out_dir / "aux_instruction_post.png")
             example_json = config.data_dir / "<참가자ID>" / "<세션ID>.json"
             example_csv = config.data_dir / "all_responses.csv"
             snap(win, build_complete_stims(win, config, example_json, example_csv), out_dir / "aux_complete.png")

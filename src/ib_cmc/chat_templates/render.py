@@ -17,9 +17,20 @@ from ..questions import QUESTIONS
 
 ASSETS_DIR = PROJECT_ROOT / "assets" / "chat"
 
+# 설명문 이미지: 제작요청서의 밑줄 강조를 살리려고 텍스트 대신 PNG로 굽는다.
+# (PsychoPy 텍스트는 밑줄 미지원) 렌더 배율은 instruction_screen.py가 표시
+# 크기를 되계산할 때도 쓴다.
+INSTRUCTIONS_DIR = PROJECT_ROOT / "assets" / "instructions"
+INSTRUCTION_DSF = 4
+INSTRUCTION_WIDTH = 1000  # 기존 TextStim wrapWidth(1280x800 기준 px)와 동일
+
 
 def chat_image_path(item_id: int, ui_version: str) -> str:
     return str(ASSETS_DIR / f"q{item_id}_{ui_version}.png")
+
+
+def instruction_image_path(phase: str) -> str:
+    return str(INSTRUCTIONS_DIR / f"instruction_{phase}.png")
 
 
 def _rgb_css(color) -> str:
@@ -262,5 +273,53 @@ def render_all() -> None:
     tmp_html.unlink(missing_ok=True)
 
 
+def build_instruction_html(text: str, config: AppConfig) -> str:
+    paragraphs = "".join(f"<p>{p}</p>" for p in text.split("\n\n"))
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  body {{ margin: 0; background: {_rgb_css(config.window.background_color)};
+         width: {INSTRUCTION_WIDTH}px; }}
+  .box {{ font-family: '{config.font.name}'; font-size: {config.font.size_instruction}px;
+         line-height: 1.7; text-align: center; color: {_rgb_css(config.font.color)}; }}
+  p {{ margin: 0 0 1.3em; }}
+  .box p:last-child {{ margin-bottom: 0; }}
+  u {{ text-underline-offset: 4px; }}
+</style></head>
+<body><div class="box">{paragraphs}</div></body></html>
+"""
+
+
+def render_instructions() -> None:
+    from playwright.sync_api import sync_playwright
+
+    # instruction_screen은 이 모듈을 import하므로(경로 함수) 순환을 피하려고 지연 import
+    from ..screens.instruction_screen import INSTRUCTION_TEXTS
+
+    config = load_config()
+    INSTRUCTIONS_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_html = INSTRUCTIONS_DIR / "_render_tmp.html"
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(
+            viewport={"width": INSTRUCTION_WIDTH, "height": 800},
+            device_scale_factor=INSTRUCTION_DSF,
+        )
+        for phase, text in INSTRUCTION_TEXTS.items():
+            tmp_html.write_text(build_instruction_html(text, config), encoding="utf-8")
+            page.goto(tmp_html.as_uri())
+            height = int(page.locator(".box").bounding_box()["height"]) + 2
+            page.set_viewport_size({"width": INSTRUCTION_WIDTH, "height": height})
+            out_path = instruction_image_path(phase)
+            page.screenshot(path=out_path)
+            print("saved", out_path)
+        browser.close()
+    tmp_html.unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
-    render_all()
+    import sys
+
+    if "instructions" in sys.argv[1:]:
+        render_instructions()  # 설명문 이미지만 다시 굽기 (채팅 이미지는 그대로)
+    else:
+        render_all()
+        render_instructions()

@@ -8,7 +8,7 @@ window:
   # false(기본값): 일반 창모드로 화면에 꽉 차게 띄우되 최소화/복원 버튼은 그대로 둠
   #   (대기화면에서 다른 작업 후 복귀하는 흐름과 맞음).
   # true: 진짜 전체화면(kiosk 모드) — 최소화 버튼이 없어지므로 특수한 경우가 아니면 비추천.
-  fullscreen: false
+  fullscreen: true
   background_color: "white"
 
 font:

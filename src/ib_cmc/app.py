@@ -133,6 +133,10 @@ def create_window(config: AppConfig) -> visual.Window:
             fullscr=True,
             color=config.window.background_color,
             units="pix",
+            # 주사율 측정 안 함: 측정 중 띄우는 스플래시 문구가 Noto Sans를 요구하는데
+            # exe 환경에서 폰트 매니저가 이를 못 찾아 죽는 경우가 있고(간헐적),
+            # 이 프로젝트는 주사율 값을 쓰지 않는다.
+            checkTiming=False,
         )
     else:
         # 기본값: 일반 창모드로 모니터의 작업 영역(작업표시줄 제외)에 맞춰 크게 띄우되,
@@ -154,6 +158,7 @@ def create_window(config: AppConfig) -> visual.Window:
             allowGUI=True,
             color=config.window.background_color,
             units="pix",
+            checkTiming=False,  # 위 fullscreen 분기의 주석 참고
         )
 
     # settings.yaml의 px 값들은 1280x800 기준이라, 실제 창이 더 크면(요즘 모니터는

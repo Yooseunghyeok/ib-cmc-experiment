@@ -242,6 +242,24 @@ def test_google_sheets_finalize_upserts_existing_summary_row():
     assert row["1 사전(부정)"] == 3
 
 
+def test_google_sheets_finalize_retries_after_rate_limit():
+    # 응답을 빠르게 입력하면 finalize 시점에 구글 API 쓰기 한도에 걸려 있을 수
+    # 있다. summary 기록은 마지막 기회이므로 기다렸다 재시도해야 한다.
+    sheet = FakeSpreadsheet(fail_appends=2)  # 헤더 append부터 두 번 연속 실패
+    storage = GoogleSheetsStorage(sheet)
+    storage.save_response(_make_record(phase="pre", item_id=1, interpretation_type="negative", score=4))
+    sheet.worksheets[GoogleSheetsStorage.RESPONSES_SHEET].fail_appends = 2
+
+    sleeps: list[int] = []
+    storage.finalize_session(_make_session(), _sleep=sleeps.append)
+
+    ws = sheet.worksheets[GoogleSheetsStorage.SUMMARY_SHEET]
+    row = dict(zip(SUMMARY_FIELDNAMES, ws.rows[1]))
+    assert row["ID"] == "p1"
+    assert row["1 사전(부정)"] == 4
+    assert sleeps == list(GoogleSheetsStorage.FINALIZE_RETRY_DELAYS[:2])
+
+
 def test_google_sheets_queues_failed_rows_and_retries_on_finalize():
     sheet = FakeSpreadsheet(fail_appends=1)  # 첫 append(헤더)부터 실패
     storage = GoogleSheetsStorage(sheet)

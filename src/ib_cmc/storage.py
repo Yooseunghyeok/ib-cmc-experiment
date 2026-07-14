@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import json
+import time
 from abc import ABC, abstractmethod
 from dataclasses import replace
 from pathlib import Path
@@ -197,12 +198,22 @@ class GoogleSheetsStorage(ResultStorage):
             self._pending_rows.append(row)
             print(f"[GoogleSheetsStorage] 응답 전송 실패, 큐에 보관 후 재시도 예정: {e}")
 
-    def finalize_session(self, session: SessionState) -> None:
-        try:
-            self._flush_pending()
-            self._upsert_summary(session)
-        except Exception as e:
-            print(f"[GoogleSheetsStorage] finalize 전송 실패 (로컬 저장은 유지됨): {e}")
+    # finalize는 응답을 빠르게 입력한 직후라 구글 API 쓰기 한도(분당 60건)에
+    # 걸려 있기 쉽다. summary를 남길 마지막 기회이므로 한도가 풀릴 때까지
+    # 기다렸다 몇 차례 재시도한다.
+    FINALIZE_RETRY_DELAYS = (5, 15, 30, 65)
+
+    def finalize_session(self, session: SessionState, _sleep=time.sleep) -> None:
+        for delay in (0, *self.FINALIZE_RETRY_DELAYS):
+            if delay:
+                _sleep(delay)
+            try:
+                self._flush_pending()
+                self._upsert_summary(session)
+                return
+            except Exception as e:
+                print(f"[GoogleSheetsStorage] finalize 전송 실패, 재시도 예정: {e}")
+        print("[GoogleSheetsStorage] finalize 재시도 모두 실패 (로컬 저장은 유지됨)")
 
     def load_session(self, session_id: str) -> list[ResponseRecord]:
         raise NotImplementedError("세션 복원은 LocalFileStorage에서 수행한다")

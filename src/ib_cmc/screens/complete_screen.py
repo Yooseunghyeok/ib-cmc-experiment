@@ -16,7 +16,7 @@ def build_complete_stims(win, config: AppConfig, json_path: Path, csv_path: Path
         color=font.color, font=font.name, height=font.size_instruction, bold=True,
         wrapWidth=1000 * s,
     )
-    return [title, paths_text, hint]
+    return [title]
 
 
 def run_complete_screen(win, config: AppConfig, json_path: Path, csv_path: Path) -> None:

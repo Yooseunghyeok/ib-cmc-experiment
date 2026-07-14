@@ -1,12 +1,20 @@
 """config/settings.yaml 로더. UI 크기/위치/색상/폰트 등을 dataclass로 노출한다."""
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if getattr(sys, "frozen", False):
+    # PyInstaller onedir 빌드: 리소스(config/, assets/)는 exe 옆 _internal 폴더에 풀린다.
+    PROJECT_ROOT = Path(sys._MEIPASS)
+    # 참가자 데이터는 _internal 안에 묻히면 실험자가 찾기 어려우니 exe 옆에 저장한다.
+    DATA_ROOT = Path(sys.executable).resolve().parent
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    DATA_ROOT = PROJECT_ROOT
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "settings.yaml"
 
 
@@ -133,7 +141,7 @@ def load_config(path: Path | None = None) -> AppConfig:
         for name, style in raw["ui_style"].items()
     }
     likert = LikertConfig(**raw["likert"])
-    data_dir = PROJECT_ROOT / raw["paths"]["data_dir"]
+    data_dir = DATA_ROOT / raw["paths"]["data_dir"]
     google_sheets = GoogleSheetsConfig(**raw.get("google_sheets", {}))
 
     return AppConfig(

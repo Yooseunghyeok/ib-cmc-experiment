@@ -121,12 +121,20 @@ SUMMARY_COLUMN_SPECS = (
     ("post", "negative", "사후 (부정)"),
 )
 
+# 수정요청(260721): 문항별 열 뒤에 조건별 총합 4열을 추가한다.
+SUMMARY_TOTAL_SPECS = (
+    ("pre", "benign", "사전(온건)총합"),
+    ("pre", "negative", "사전(부정)총합"),
+    ("post", "benign", "사후(온건)총합"),
+    ("post", "negative", "사후(부정)총합"),
+)
+
 
 def summary_sheet_fieldnames() -> list[str]:
     """summary 워크시트의 wide-format 헤더를 만든다.
 
     각 문항마다 사전(온건), 사전(부정), 사후 (온건), 사후 (부정) 순서로
-    4개 점수 열을 배치한다.
+    4개 점수 열을 배치하고, 맨 뒤에 조건별 총합 4열(사전(온건)총합 등)을 둔다.
     """
     return [
         "ID",
@@ -135,6 +143,7 @@ def summary_sheet_fieldnames() -> list[str]:
             for item_id in ITEM_IDS
             for _phase, _itype, label in SUMMARY_COLUMN_SPECS
         ),
+        *(label for _phase, _itype, label in SUMMARY_TOTAL_SPECS),
     ]
 
 
@@ -149,11 +158,17 @@ def summarize_records(records: list[ResponseRecord]) -> dict[str, int | str]:
     없는 문항/조건은 빈 문자열로 남긴다.
     """
     summary: dict[str, int | str] = {field: "" for field in SUMMARY_FIELDNAMES}
+    totals: dict[str, int] = {label: 0 for _phase, _itype, label in SUMMARY_TOTAL_SPECS}
     for record in records:
         for phase, interpretation_type, label in SUMMARY_COLUMN_SPECS:
             if record.phase == phase and record.interpretation_type == interpretation_type:
                 summary[f"{record.item_id} {label}"] = record.score
                 break
+        for phase, interpretation_type, total_label in SUMMARY_TOTAL_SPECS:
+            if record.phase == phase and record.interpretation_type == interpretation_type:
+                totals[total_label] += record.score
+                break
+    summary.update(totals)
     return summary
 
 

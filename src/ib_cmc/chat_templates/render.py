@@ -60,11 +60,16 @@ _IPHONE_HEADER_CSS = """
     border-bottom: 1px solid lightgray;
   }
   .back {
-    position: absolute; left: 10px; top: 10px;
-    font-size: 17px; color: rgb(90, 90, 95);
-    display: flex; align-items: center; gap: 2px;
+    position: absolute; left: 12px; top: 12px;
+    font-size: 26px; line-height: 1; color: rgb(10, 132, 255);
   }
-  .avatar { width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0; }
+  .camera { position: absolute; right: 14px; top: 16px; display: flex; }
+  .avatar {
+    width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+    background: rgb(150, 150, 155);
+    display: flex; align-items: center; justify-content: center;
+    color: rgb(255, 255, 255); font-size: 20px; font-weight: bold;
+  }
   .namewrap { margin-top: 4px; display: flex; align-items: center; gap: 2px; }
   .name { font-size: 13px; color: rgb(20, 20, 20); font-weight: bold; }
   .chevron { font-size: 12px; color: rgb(150, 150, 150); }
@@ -74,7 +79,7 @@ _GALAXY_HEADER_CSS = """
   .header {
     display: flex; align-items: center; gap: 10px;
     height: 62px; padding: 0 12px;
-    background: rgb(250, 249, 240);
+    background: rgb(255, 255, 255);
     border-bottom: 1px solid lightgray;
   }
   .back { font-size: 22px; color: rgb(40, 40, 40); }
@@ -92,12 +97,14 @@ _GALAXY_HEADER_CSS = """
 
 _IPHONE_HEADER_BODY = """
   <div class="header">
-    <span class="back">&#8249;(뒤로)</span>
-    <svg class="avatar" viewBox="0 0 60 60">
-      <circle cx="30" cy="30" r="30" fill="rgb(160,160,166)"></circle>
-      <circle cx="30" cy="24" r="11" fill="rgb(250,250,251)"></circle>
-      <path d="M8 55c2-15 10-21 22-21s20 6 22 21" fill="rgb(250,250,251)"></path>
-    </svg>
+    <span class="back">&#8249;</span>
+    <span class="camera">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgb(10,132,255)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 7l-7 5 7 5V7z"></path>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+      </svg>
+    </span>
+    <div class="avatar">{initial}</div>
     <div class="namewrap">
       <span class="name">{name}</span>
       <span class="chevron">&#8250;</span>
@@ -183,7 +190,9 @@ def build_html(question: Question, ui_version: str, config: AppConfig) -> str:
 
     if ui_version == "iphone":
         header_css = _IPHONE_HEADER_CSS
-        header_body = _IPHONE_HEADER_BODY.format(name=style.header_name)
+        header_body = _IPHONE_HEADER_BODY.format(
+            name=style.header_name, initial=style.header_name[0]
+        )
         tail_css = _IPHONE_BUBBLE_TAIL_CSS
     else:
         header_css = _GALAXY_HEADER_CSS
@@ -196,10 +205,17 @@ def build_html(question: Question, ui_version: str, config: AppConfig) -> str:
         "FRIEND_COLOR", _rgb_css(style.friend_bubble_color)
     ).replace("ME_COLOR", _rgb_css(style.my_bubble_color))
 
-    bubbles = "".join(
-        f'<div class="bubble {"me" if sender == "me" else "friend"}">{text}</div>'
-        for sender, text in _ordered_messages(question)
-    )
+    # 각 말풍선 아래에 발신자 라벨 (나)/(친구)를 붙인다 (수정요청 260721).
+    def _msg(sender: str, text: str) -> str:
+        cls = "me" if sender == "me" else "friend"
+        who = "나" if sender == "me" else "친구"
+        return (
+            f'<div class="msg {cls}">'
+            f'<div class="bubble {cls}">{text}</div>'
+            f'<span class="who">({who})</span></div>'
+        )
+
+    bubbles = "".join(_msg(sender, text) for sender, text in _ordered_messages(question))
 
     return f"""<!doctype html>
 <html><head><meta charset="utf-8"><style>
@@ -216,9 +232,17 @@ def build_html(question: Question, ui_version: str, config: AppConfig) -> str:
     display: flex; flex-direction: column; gap: 10px;
     padding: 14px;
   }}
+  .date {{
+    text-align: center; font-size: 12px; color: rgb(150, 150, 150);
+    margin-bottom: 4px;
+  }}
+  .msg {{ display: flex; flex-direction: column; max-width: 64%; }}
+  .msg.friend {{ align-self: flex-start; align-items: flex-start; }}
+  .msg.me {{ align-self: flex-end; align-items: flex-end; }}
+  .who {{ font-size: 11px; color: rgb(140, 140, 140); margin-top: 3px; }}
   .bubble {{
     position: relative;
-    max-width: 62%;
+    max-width: 100%;
     padding: {style.bubble_padding}px;
     border-radius: {style.bubble_corner}px;
     font-size: {font.size_chat}px;
@@ -226,13 +250,11 @@ def build_html(question: Question, ui_version: str, config: AppConfig) -> str:
     word-break: keep-all;
   }}
   .bubble.friend {{
-    align-self: flex-start;
     background: {_rgb_css(style.friend_bubble_color)};
     color: {_rgb_css(style.friend_text_color)};
     border: 1px solid gainsboro;
   }}
   .bubble.me {{
-    align-self: flex-end;
     background: {_rgb_css(style.my_bubble_color)};
     color: {_rgb_css(style.my_text_color)};
   }}
@@ -240,7 +262,7 @@ def build_html(question: Question, ui_version: str, config: AppConfig) -> str:
 </style></head>
 <body>
 {header_body}
-  <div class="body">{bubbles}</div>
+  <div class="body"><div class="date">X월 XX일</div>{bubbles}</div>
 </body></html>
 """
 
@@ -283,6 +305,7 @@ def build_instruction_html(text: str, config: AppConfig) -> str:
   p {{ margin: 0 0 1.3em; }}
   .box p:last-child {{ margin-bottom: 0; }}
   u {{ text-underline-offset: 4px; }}
+  .blue {{ color: #1a73e8; }}
 </style></head>
 <body><div class="box">{paragraphs}</div></body></html>
 """

@@ -30,6 +30,7 @@ class FontConfig:
     name: str
     size_situation: int
     size_chat: int
+    size_prompt: int
     size_interpretation: int
     size_likert_label: int
     size_likert_number: int
@@ -97,6 +98,7 @@ def apply_scale(config: AppConfig, window_height: int) -> None:
     font = config.font
     font.size_situation = round(font.size_situation * scale)
     font.size_chat = round(font.size_chat * scale)
+    font.size_prompt = round(font.size_prompt * scale)
     font.size_interpretation = round(font.size_interpretation * scale)
     font.size_likert_label = round(font.size_likert_label * scale)
     font.size_likert_number = round(font.size_likert_number * scale)

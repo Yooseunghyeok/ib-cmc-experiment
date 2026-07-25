@@ -15,9 +15,11 @@ font:
   name: "Malgun Gothic"
   size_situation: 22
   size_chat: 20
+  # 해석 프롬프트("이 상황에서 아래와 같은 생각이...") — 해석문(24)보다 작고 채팅(20)보다 크게
+  size_prompt: 22
   size_interpretation: 24
-  # 척도 라벨은 한 줄로 읽혀야 해서(제작요청서) 크기를 줄이고 간격(likert.spacing)을 넓힘
-  size_likert_label: 13
+  # 척도 라벨은 한 줄로 읽혀야 해서(제작요청서) 겹치지 않는 선에서 키움(간격 likert.spacing과 함께)
+  size_likert_label: 16
   size_likert_number: 18
   size_instruction: 24
   color: "black"
@@ -30,26 +32,26 @@ chat_frame:
   height: 380
 
 # UI 버전별 말풍선/프레임 스타일
-# 제작요청서 지정 색상: 상대방 채팅 = 흰색, 나의 채팅 = 노란색 (카카오톡 스타일)
+# 수정요청(260721): 실제 iMessage/삼성메시지처럼 — 나=파란 말풍선+흰 글씨, 친구=회색 말풍선+검정 글씨
 ui_style:
   iphone:
-    frame_bg: [0.96, 0.96, 0.97]
+    frame_bg: [1.0, 1.0, 1.0]
     header_name: "친구"
     avatar_color: [0.75, 0.75, 0.78]
-    friend_bubble_color: [1.0, 1.0, 1.0]
+    friend_bubble_color: [0.83, 0.83, 0.84]
     friend_text_color: "black"
-    my_bubble_color: [1.0, 0.84, -0.54]
-    my_text_color: "black"
+    my_bubble_color: [-0.92, 0.04, 1.0]
+    my_text_color: "white"
     bubble_corner: 18
     bubble_padding: 14
   galaxy:
-    frame_bg: [0.96, 0.96, 0.97]
+    frame_bg: [1.0, 1.0, 1.0]
     header_name: "친구"
     avatar_color: [0.05, 0.48, 1.0]
-    friend_bubble_color: [1.0, 1.0, 1.0]
+    friend_bubble_color: [0.88, 0.88, 0.88]
     friend_text_color: "black"
-    my_bubble_color: [1.0, 0.84, -0.54]
-    my_text_color: "black"
+    my_bubble_color: [-0.92, 0.04, 1.0]
+    my_text_color: "white"
     bubble_corner: 8
     bubble_padding: 12
 
@@ -57,7 +59,7 @@ ui_style:
 # spacing은 라벨("상당히 많이 떠오름" 등)이 한 줄로 서로 겹치지 않을 만큼 넓게
 likert:
   y: -300
-  spacing: 160
+  spacing: 185
   box_size: 34
 
 paths:

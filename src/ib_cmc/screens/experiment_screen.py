@@ -46,8 +46,9 @@ def build_experiment_stims(
 
     interpretation_text = question.interpretation_text(interpretation_type)
     prompt_stim = visual.TextStim(
-        win, text="아래의 해석이 얼마나 마음속에 떠오르나요?", pos=(0, -160 * s),
-        color=font.color, font=font.name, height=font.size_chat, wrapWidth=1000 * s,
+        win, text="이 상황에서 아래와 같은 생각이 귀하의 마음에 얼마나 떠오르는지 체크해주세요.",
+        pos=(0, -160 * s),
+        color=font.color, font=font.name, height=font.size_prompt, wrapWidth=1000 * s,
     )
     interpretation_top_y = -185 * s
     interpretation_stim = visual.TextStim(

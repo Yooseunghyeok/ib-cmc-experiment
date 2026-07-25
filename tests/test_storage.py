@@ -116,7 +116,8 @@ def test_summarize_records_maps_item_phase_and_type_scores():
 
     summary = summarize_records(records)
 
-    assert len(SUMMARY_FIELDNAMES) == 89
+    # 문항 22개 × 4열(88) + ID(1) + 조건별 총합 4열 = 93
+    assert len(SUMMARY_FIELDNAMES) == 93
     assert SUMMARY_FIELDNAMES[:9] == [
         "ID",
         "1 사전(온건)",
@@ -128,11 +129,16 @@ def test_summarize_records_maps_item_phase_and_type_scores():
         "2 사후 (온건)",
         "2 사후 (부정)",
     ]
-    assert SUMMARY_FIELDNAMES[-4:] == [
+    # 마지막 4열은 조건별 총합, 그 앞 4열이 문항 22의 열
+    assert SUMMARY_FIELDNAMES[-8:] == [
         "22 사전(온건)",
         "22 사전(부정)",
         "22 사후 (온건)",
         "22 사후 (부정)",
+        "사전(온건)총합",
+        "사전(부정)총합",
+        "사후(온건)총합",
+        "사후(부정)총합",
     ]
     assert summary["1 사전(온건)"] == 2
     assert summary["1 사전(부정)"] == 4
@@ -141,6 +147,11 @@ def test_summarize_records_maps_item_phase_and_type_scores():
     assert summary["2 사전(온건)"] == ""
     assert summary["2 사전(부정)"] == 5
     assert summary["2 사후 (부정)"] == 3
+    # 조건별 총합: 사전온건 2, 사전부정 4+5=9, 사후온건 1, 사후부정 3
+    assert summary["사전(온건)총합"] == 2
+    assert summary["사전(부정)총합"] == 9
+    assert summary["사후(온건)총합"] == 1
+    assert summary["사후(부정)총합"] == 3
 
 
 class FakeWorksheet:

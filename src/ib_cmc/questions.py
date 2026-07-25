@@ -70,14 +70,14 @@ QUESTIONS: list[Question] = [
     Question(
         item_id=8,
         situation="파티에 참석한 다음 날, 친구에게서 문자가 왔다.",
-        friend_message="어제 얘기를 들었어.",
+        friend_message="어제 이야기를 들었어.",
         my_message=None,
         benign_interpretation="친구가 파티에서 일어난 어떤 흥미로운 일에 대해 들은 것이다.",
         negative_interpretation="친구가 내가 파티에서 한 당황스럽거나 창피한 행동/말에 대해 들은 것이다.",
     ),
     Question(
         item_id=9,
-        situation="어제 친구에게 장문의 문자를 보냈는데 답장이 없었다. 그래서 다시 문자를 보냈더니 친구에게 답장이 왔다.",
+        situation="어제 친구에게 장문의 문자를 보냈는데 답장이 없었다.\n그래서 다시 문자를 보냈더니 친구에게 답장이 왔다.",
         friend_message="나 어제 문자 못 받았는데.",
         my_message=None,
         benign_interpretation="친구가 정말로 문자를 받지 못한 것이다.",

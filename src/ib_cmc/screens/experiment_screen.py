@@ -46,7 +46,7 @@ def build_experiment_stims(
 
     interpretation_text = question.interpretation_text(interpretation_type)
     prompt_stim = visual.TextStim(
-        win, text="이 상황에서 아래와 같은 생각이 귀하의 마음에 얼마나 떠오르는지 체크해주세요.",
+        win, text="아래에 제시된 해석이 실제 당신의 머릿속에 떠오를 가능성은 어느정도인가요?",
         pos=(0, -160 * s),
         color=font.color, font=font.name, height=font.size_prompt, wrapWidth=1000 * s,
     )

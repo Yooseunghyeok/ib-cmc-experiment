@@ -19,3 +19,4 @@ build-log.txt
 
 *.log
 .DS_Store
+.venv-psychopy/

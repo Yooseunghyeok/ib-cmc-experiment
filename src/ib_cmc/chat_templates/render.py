@@ -301,7 +301,10 @@ def build_instruction_html(text: str, config: AppConfig) -> str:
   body {{ margin: 0; background: {_rgb_css(config.window.background_color)};
          width: {INSTRUCTION_WIDTH}px; }}
   .box {{ font-family: '{config.font.name}'; font-size: {config.font.size_instruction}px;
-         line-height: 1.7; text-align: center; color: {_rgb_css(config.font.color)}; }}
+         line-height: 1.7; text-align: center; color: {_rgb_css(config.font.color)};
+         /* 수정요청(260821) 1번: '얼마나', '바탕으로'처럼 한 단어가 줄 끝에서
+            쪼개지던 문제 — 한국어는 어절 단위로만 줄바꿈되게 한다. */
+         word-break: keep-all; overflow-wrap: break-word; }}
   p {{ margin: 0 0 1.3em; }}
   .box p:last-child {{ margin-bottom: 0; }}
   u {{ text-underline-offset: 4px; }}

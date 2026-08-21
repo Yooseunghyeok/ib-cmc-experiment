@@ -60,3 +60,33 @@ ctypes.ArgumentError: argument 5: TypeError: expected LP_c_ubyte instance instea
 
 기존 참가자 데이터를 이어가려면 예전 배포본의 `IB-CMC\data` 폴더를 새 폴더에
 복사해 넣는다. 구글시트는 시트 URL과 서비스 계정 키가 그대로라 아무것도 안 해도 계속 누적된다.
+
+## 함정: exe에서만 "구글시트 연결 실패"가 날 때 (2026-08-22)
+
+증상은 이랬다. venv에서 `python main.py`로 돌리면 시트에 잘 쓰는데, 같은 코드를
+exe로 묶으면 시트에만 아무것도 안 쌓인다. 로컬 저장은 멀쩡해서 눈치채기 어렵다.
+
+원인은 **OpenSSL DLL 짝이 안 맞는 것**이었다. PyInstaller가 `_ssl.pyd`가 필요로 하는
+`libssl-3-x64.dll` / `libcrypto-3-x64.dll`을 시스템 PATH에서 찾는데, 이 PC에는 다른
+프로그램이 깐 OpenSSL이 먼저 잡혀서 파이썬 것과 다른 파일이 들어갔다. 그러면 exe 안에서
+`import _ssl`이 실패하고, 최종 증상은 아래 한 줄로만 나타난다:
+
+```
+ImportError: Can't connect to HTTPS URL because the SSL module is not available.
+```
+
+`IB-CMC.spec`의 `_openssl_binaries()`가 `sys.base_prefix` 기준으로 **`_ssl.pyd`와 같은
+파이썬 설치본의 DLL**을 강제로 넣어서 막아둔다. 빌드 후 아래로 확인할 수 있다:
+
+```powershell
+# 두 해시가 같아야 정상
+Get-FileHash dist\IB-CMC\_internal\libssl-3-x64.dll
+Get-FileHash "$((python -c 'import sys;print(sys.base_prefix)'))\Library\bin\libssl-3-x64.dll"
+```
+
+**빌드한 뒤에는 반드시 exe를 실제로 켜서 시트에 행이 쌓이는지 확인할 것.** 참가자 ID를
+`zztest` 같은 걸로 한 문항만 응답해보면 된다. 시트 전송 실패는 실험을 막지 않도록
+설계되어 있어서(의도된 동작) 조용히 지나간다 — 확인하지 않으면 모른다.
+
+실패 원인은 exe 옆 `IB-CMC-log.txt`에 남는다. 창모드 빌드라 `print`는 아무데도 안 보이므로
+이 로그가 유일한 단서다.

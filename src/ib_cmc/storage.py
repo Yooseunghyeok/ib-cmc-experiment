@@ -10,12 +10,15 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import replace
 from pathlib import Path
 
 from .models import CSV_FIELDNAMES, ResponseRecord, SessionState
+
+logger = logging.getLogger(__name__)
 
 
 class ResultStorage(ABC):
@@ -217,9 +220,11 @@ class GoogleSheetsStorage(ResultStorage):
         try:
             self._flush_pending()
             self._responses_worksheet().append_row(row, value_input_option="RAW")
-        except Exception as e:
+        except Exception:
             self._pending_rows.append(row)
-            print(f"[GoogleSheetsStorage] 응답 전송 실패, 큐에 보관 후 재시도 예정: {e}")
+            logger.exception(
+                "응답 전송 실패, 큐에 보관 후 재시도 예정 (대기 %d행)", len(self._pending_rows)
+            )
 
     # finalize는 응답을 빠르게 입력한 직후라 구글 API 쓰기 한도(분당 60건)에
     # 걸려 있기 쉽다. summary를 남길 마지막 기회이므로 한도가 풀릴 때까지
@@ -235,9 +240,9 @@ class GoogleSheetsStorage(ResultStorage):
                 self._flush_pending()
                 self._upsert_summary(session)
                 return
-            except Exception as e:
-                print(f"[GoogleSheetsStorage] finalize 전송 실패, 재시도 예정: {e}")
-        print("[GoogleSheetsStorage] finalize 재시도 모두 실패 (로컬 저장은 유지됨)")
+            except Exception:
+                logger.exception("finalize 전송 실패, 재시도 예정")
+        logger.error("finalize 재시도 모두 실패 (로컬 저장은 유지됨)")
 
     def load_session(self, session_id: str) -> list[ResponseRecord]:
         raise NotImplementedError("세션 복원은 LocalFileStorage에서 수행한다")
@@ -296,15 +301,15 @@ class CompositeStorage(ResultStorage):
         self.primary.save_response(record)
         try:
             self.secondary.save_response(record)
-        except Exception as e:
-            print(f"[CompositeStorage] 부가 저장소 save_response 실패: {e}")
+        except Exception:
+            logger.exception("부가 저장소 save_response 실패")
 
     def finalize_session(self, session: SessionState) -> None:
         self.primary.finalize_session(session)
         try:
             self.secondary.finalize_session(session)
-        except Exception as e:
-            print(f"[CompositeStorage] 부가 저장소 finalize_session 실패: {e}")
+        except Exception:
+            logger.exception("부가 저장소 finalize_session 실패")
 
     def load_session(self, session_id: str) -> list[ResponseRecord]:
         return self.primary.load_session(session_id)

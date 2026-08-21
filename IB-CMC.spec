@@ -1,11 +1,36 @@
 # -*- mode: python ; coding: utf-8 -*-
 """PyInstaller spec for the IB-CMC Windows desktop experiment."""
 
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all
 
 ROOT = Path.cwd()
+
+
+def _openssl_binaries():
+    """_ssl.pyd 와 같은 파이썬 설치본의 OpenSSL DLL을 강제로 넣는다.
+
+    PyInstaller는 libssl/libcrypto를 시스템 PATH에서 찾는데, 이 PC에는 다른
+    프로그램이 설치한 OpenSSL이 먼저 잡혀서 짝이 안 맞는 DLL이 들어갔었다.
+    그러면 exe 안에서 `import _ssl`이 실패하고, 증상은 실험 도중 조용히
+    "구글시트 연결 실패"로만 나타난다 (2026-08-22에 실제로 겪음).
+
+    아나콘다 기반 venv면 base_prefix/Library/bin 에, python.org 배포본이면
+    base_prefix/DLLs 에 있다. 둘 다 훑어서 있는 것만 담는다.
+    """
+    names = ("libssl-3-x64.dll", "libcrypto-3-x64.dll", "libssl-3.dll", "libcrypto-3.dll")
+    base = Path(sys.base_prefix)
+    found = []
+    for folder in (base / "Library" / "bin", base / "DLLs", base):
+        for name in names:
+            dll = folder / name
+            if dll.is_file():
+                found.append((str(dll), "."))
+        if found:
+            break  # _ssl.pyd 와 같은 곳에서 나온 한 벌만 쓴다
+    return found
 
 packages_to_collect = [
     "psychopy",
@@ -21,7 +46,7 @@ packages_to_collect = [
     "googleapiclient",
 ]
 
-binaries = []
+binaries = _openssl_binaries()
 datas = [
     (str(ROOT / "assets"), "assets"),
     (str(ROOT / "config"), "config"),

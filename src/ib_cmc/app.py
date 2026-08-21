@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ctypes
+import logging
 import random
 import time
 import uuid
@@ -9,13 +10,12 @@ from datetime import datetime
 
 from psychopy import visual
 
-from .config import PROJECT_ROOT, AppConfig, apply_scale, load_config
+from .config import DATA_ROOT, PROJECT_ROOT, AppConfig, apply_scale, load_config
 from .models import ResponseRecord, SessionState, UiVersion
 from .questions import QUESTIONS
 from .screens.common import ExperimentAborted
 from .screens.complete_screen import run_complete_screen
 from .screens.experiment_screen import run_experiment_screen
-from .screens.fixation_instruction_screen import run_fixation_instruction_screen
 from .screens.instruction_screen import run_instruction_screen
 from .screens.participant_screen import run_participant_screen
 from .screens.waiting_screen import run_waiting_screen
@@ -29,6 +29,27 @@ CHAT_RENDERERS: dict[UiVersion, type[BaseChatRenderer]] = {
     "iphone": IPhoneChatRenderer,
     "galaxy": GalaxyChatRenderer,
 }
+
+logger = logging.getLogger(__name__)
+
+# exe는 창모드(console=False)로 빌드되므로 print가 어디에도 보이지 않는다.
+# 구글시트 전송 실패처럼 조용히 지나가면 안 되는 문제를 실험자가 나중에라도
+# 확인할 수 있게 exe 옆 파일로 남긴다.
+LOG_PATH = DATA_ROOT / "IB-CMC-log.txt"
+
+
+def _setup_logging() -> None:
+    """ib_cmc 로거만 파일에 붙인다 (psychopy 로그까지 딸려오지 않게)."""
+    log = logging.getLogger("ib_cmc")
+    if log.handlers:
+        return
+    try:
+        handler = logging.FileHandler(LOG_PATH, encoding="utf-8")
+    except OSError:
+        return  # 쓰기 권한이 없어도 실험은 계속되어야 한다
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    log.addHandler(handler)
+    log.setLevel(logging.INFO)
 
 
 def _now_iso() -> str:
@@ -74,9 +95,10 @@ def _build_storage(
         sheets = GoogleSheetsStorage.from_service_account(
             gs.spreadsheet_url, credentials_path, wait_fn=wait_fn
         )
-    except Exception as e:
-        print(f"[app] 구글시트 연결 실패 — 로컬 저장만 사용합니다: {e}")
+    except Exception:
+        logger.exception("구글시트 연결 실패 — 로컬 저장만 사용합니다 (키=%s)", credentials_path)
         return local
+    logger.info("구글시트 연결 성공: %s", gs.spreadsheet_url)
     return CompositeStorage(local, sheets)
 
 
@@ -191,6 +213,7 @@ def create_window(config: AppConfig) -> visual.Window:
 
 
 def run_experiment(config: AppConfig | None = None) -> None:
+    _setup_logging()
     _make_process_dpi_aware()
     config = config or load_config()
     win = create_window(config)
@@ -216,8 +239,6 @@ def run_experiment(config: AppConfig | None = None) -> None:
         run_instruction_screen(win, config, "pre")
         _run_phase(win, config, storage, session, chat_renderer, "pre", random.Random())
 
-        # 사전 과제 직후에만 고정점 응시 안내를 한 번 표시한다.
-        run_fixation_instruction_screen(win, config)
         run_waiting_screen(win, config)
 
         run_instruction_screen(win, config, "post")
